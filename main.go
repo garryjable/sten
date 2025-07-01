@@ -12,6 +12,19 @@ import (
 )
 
 func main() {
+	// port := "/dev/ttyUSB0" // or COM3 on Windows
+	// baud := 9600
+
+	// gemini := machine.NewGeminiPrMachine(port, baud, func(keys []string) {
+	// 	fmt.Printf("Stroke keys: %v\n", keys)
+	// })
+
+	// err := gemini.StartCapture()
+	// if err != nil {
+	// 	log.Fatalf("Failed to start Gemini PR machine: %v", err)
+	// }
+	// defer gemini.StopCapture()
+
 	dict, err := engine.LoadDictionary("dict.json")
 	if err != nil {
 		fmt.Println("Error loading dictionary:", err)
