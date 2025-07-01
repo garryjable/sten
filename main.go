@@ -2,28 +2,30 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	"dotterel/engine"
+	"dotterel/machine"
 
 	"golang.org/x/term"
 )
 
 func main() {
-	// port := "/dev/ttyUSB0" // or COM3 on Windows
-	// baud := 9600
+	port := "/dev/ttyUSB0" // or COM3 on Windows
+	baud := 9600
 
-	// gemini := machine.NewGeminiPrMachine(port, baud, func(keys []string) {
-	// 	fmt.Printf("Stroke keys: %v\n", keys)
-	// })
+	gemini := machine.NewGeminiPrMachine(port, baud, func(keys []string) {
+		fmt.Printf("Stroke keys: %v\n", keys)
+	})
 
-	// err := gemini.StartCapture()
-	// if err != nil {
-	// 	log.Fatalf("Failed to start Gemini PR machine: %v", err)
-	// }
-	// defer gemini.StopCapture()
+	err := gemini.StartCapture()
+	if err != nil {
+		log.Fatalf("Failed to start Gemini PR machine: %v", err)
+	}
+	defer gemini.StopCapture()
 
 	dict, err := engine.LoadDictionary("dict.json")
 	if err != nil {
