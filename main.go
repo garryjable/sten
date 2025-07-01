@@ -8,13 +8,18 @@ import (
 	"strings"
 	"syscall"
 
+	"dotterel/config"
 	"dotterel/engine"
 	"dotterel/machine"
 )
 
 func main() {
-	port := "/dev/ttyACM0" // Your Gemini PR device
-	baud := 9600
+	cfg, err := config.Load("config.json")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+	println(cfg.Port)
+	println(cfg.Baud)
 
 	// Load your dictionary
 	dict, err := engine.LoadDictionary("dict.json")
@@ -23,7 +28,7 @@ func main() {
 	}
 	e := engine.NewEngine(dict)
 
-	gemini := machine.NewGeminiPrMachine(port, baud, func(keys []string) {
+	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(keys []string) {
 		word := e.TranslateSteno(strings.Join(keys, " "))
 		fmt.Print(word + " ")
 	})
