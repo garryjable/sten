@@ -1,11 +1,9 @@
-package test
+package dictionary
 
 import (
 	"os"
 	"path/filepath"
 	"testing"
-
-	"gplover/dictionary"
 )
 
 func TestLoadDictionary(t *testing.T) {
@@ -26,7 +24,7 @@ func TestLoadDictionary(t *testing.T) {
 	defer os.Remove(path)
 
 	// Load and test dictionary
-	dict, err := dictionary.LoadDictionaries(dir)
+	dict, err := LoadDictionaries(dir)
 	if err != nil {
 		t.Fatalf("failed to load dictionary: %v", err)
 	}

@@ -1,10 +1,8 @@
-package test
+package config
 
 import (
 	"os"
 	"testing"
-
-	"gplover/config"
 )
 
 func TestLoadConfig(t *testing.T) {
@@ -19,7 +17,7 @@ func TestLoadConfig(t *testing.T) {
 	}
 	defer os.Remove("test_config.json")
 
-	cfg, err := config.Load("test_config.json")
+	cfg, err := Load("test_config.json")
 	if err != nil {
 		t.Fatalf("failed to load config: %v", err)
 	}
@@ -28,10 +26,10 @@ func TestLoadConfig(t *testing.T) {
 		t.Errorf("config port failed to parse")
 	}
 
-	if config.Layout["S1-"] != "S" {
+	if Layout["S1-"] != "S" {
 		t.Errorf("expected S1- to map to S")
 	}
-	if config.Layout["T-"] != "T" {
+	if Layout["T-"] != "T" {
 		t.Errorf("expected T- to map to T")
 	}
 }
