@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"gplover/config"
@@ -15,6 +14,7 @@ import (
 )
 
 func main() {
+
 	cfg, err := config.Load("config.json")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
@@ -28,7 +28,7 @@ func main() {
 	e := engine.NewEngine(dict)
 
 	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(keys []string) {
-		word := e.TranslateSteno(strings.Join(keys, " "))
+		word := e.TranslateSteno(keys)
 		fmt.Print(word + " ")
 	})
 

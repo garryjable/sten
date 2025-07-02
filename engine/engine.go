@@ -13,8 +13,8 @@ func NewEngine(dict dictionary.Dictionary) *Engine {
 	return &Engine{Dict: dict}
 }
 
-func (e *Engine) TranslateSteno(strokeText string) string {
-	stroke, err := stroke.NewStroke(strokeText)
+func (e *Engine) TranslateSteno(keys []string) string {
+	stroke, err := stroke.NewStroke(keys)
 	if err != nil {
 		return "[error]"
 	}

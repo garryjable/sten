@@ -12,16 +12,19 @@ type Stroke struct {
 	Keys []string
 }
 
-func NewStroke(steno string) (*Stroke, error) {
-	if steno == "" {
+func NewStroke(keys []string) (*Stroke, error) {
+	if len(keys) == 0 {
 		return nil, errors.New("empty stroke")
 	}
-	keys := strings.Split(steno, "")
 	return &Stroke{Keys: keys}, nil
 }
 
 func (s *Stroke) Steno() string {
-	return strings.Join(s.Keys, "")
+	parts := make([]string, len(s.Keys))
+	for i, key := range s.Keys {
+		parts[i] = strings.ReplaceAll(key, "-", "")
+	}
+	return strings.Join(parts, "")
 }
 
 func (s *Stroke) IsCorrection() bool {
