@@ -1,0 +1,17 @@
+# Deny everything
+**
+
+# Whitelist only these files/dirs
+!go.mod
+!go.sum
+!Dockerfile
+!main.go
+
+# Add test file
+!./run_tests.sh
+
+# allow Go files
+!**/*.go
+
+# if you ever vendor, you’d whitelist it explicitly:
+#!vendor/
