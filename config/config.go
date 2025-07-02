@@ -7,8 +7,9 @@ import (
 )
 
 type Config struct {
-	Port string `json:"serial_port"`
-	Baud int    `json:"baud_rate"`
+	Port        string `json:"serial_port"`
+	Baud        int    `json:"baud_rate"`
+	ReadTimeout int    `json:"timeout"`
 }
 
 func Load(path string) (*Config, error) {

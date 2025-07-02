@@ -8,9 +8,10 @@ import (
 	"strings"
 	"syscall"
 
-	"dotterel/config"
-	"dotterel/engine"
-	"dotterel/machine"
+	"gplover/config"
+	"gplover/dictionary"
+	"gplover/engine"
+	"gplover/machine"
 )
 
 func main() {
@@ -18,11 +19,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
 	}
-	println(cfg.Port)
-	println(cfg.Baud)
 
 	// Load your dictionary
-	dict, err := engine.LoadDictionary("dict.json")
+	dict, err := dictionary.LoadDictionaries("dictionaries")
 	if err != nil {
 		log.Fatalf("Error loading dictionary: %v", err)
 	}

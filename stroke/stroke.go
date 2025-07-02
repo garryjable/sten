@@ -1,4 +1,4 @@
-package engine
+package stroke
 
 import (
 	"errors"
@@ -6,13 +6,13 @@ import (
 	"strings"
 )
 
-var undoStroke = "Z" // you can change this
+var undoStroke = "*" // you can change this
 
 type Stroke struct {
 	Keys []string
 }
 
-func NewStrokeFromSteno(steno string) (*Stroke, error) {
+func NewStroke(steno string) (*Stroke, error) {
 	if steno == "" {
 		return nil, errors.New("empty stroke")
 	}

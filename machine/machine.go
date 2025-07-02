@@ -3,7 +3,9 @@ package machine
 import (
 	"errors"
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"time"
 
 	"github.com/tarm/serial"
@@ -77,7 +79,6 @@ func (m *GeminiPrMachine) StopCapture() {
 	}
 }
 
-// readLoop continuously reads 6-byte packets and processes them.
 func (m *GeminiPrMachine) readLoop() {
 	defer close(m.stoppedChan)
 
@@ -88,20 +89,20 @@ func (m *GeminiPrMachine) readLoop() {
 		case <-m.stopChan:
 			return
 		default:
-		}
-
-		n, err := m.serialPort.Read(packet)
-		if err != nil {
-			log.Printf("serial read error: %v", err)
-			continue
-		}
-		if n != BytesPerStroke {
-			log.Printf("incomplete packet read: got %d bytes", n)
-			continue
-		}
-
-		if err := m.processPacket(packet); err != nil {
-			log.Printf("invalid packet: %v", err)
+			n, err := m.serialPort.Read(packet)
+			if err != nil {
+				// Only print unexpected errors
+				if !errors.Is(err, os.ErrDeadlineExceeded) && err != io.EOF {
+					log.Printf("serial read error: %v", err)
+				}
+				continue
+			}
+			if n != BytesPerStroke {
+				continue
+			}
+			if err := m.processPacket(packet); err != nil {
+				log.Printf("invalid packet: %v", err)
+			}
 		}
 	}
 }

@@ -1,4 +1,4 @@
-module dotterel
+module gplover
 
 go 1.24.4
 
