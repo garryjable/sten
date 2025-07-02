@@ -1,10 +1,9 @@
-package test
+package stroke
 
 import (
 	"testing"
 
 	"gplover/config"
-	"gplover/stroke"
 )
 
 func TestStrokeTranslation(t *testing.T) {
@@ -15,7 +14,7 @@ func TestStrokeTranslation(t *testing.T) {
 		"-E":  "E",
 	}
 
-	s := &stroke.Stroke{
+	s := &Stroke{
 		Keys: []string{"S1-", "T-", "K-", "-E"},
 	}
 	got := s.Steno()

@@ -1,10 +1,9 @@
-package test
+package engine
 
 import (
 	"testing"
 
 	"gplover/config"
-	"gplover/engine"
 )
 
 func TestEngineTranslate(t *testing.T) {
@@ -23,7 +22,7 @@ func TestEngineTranslate(t *testing.T) {
 		"TKPW": "go",
 	}
 
-	e := engine.NewEngine(dict)
+	e := NewEngine(dict)
 
 	if word := e.TranslateSteno([]string{"S2-", "T-", "K-", "E"}); word != "stack" {
 		t.Errorf("expected stack, got %q", word)
