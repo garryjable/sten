@@ -2,6 +2,7 @@ package stroke
 
 import (
 	"errors"
+	"gplover/config"
 	"sort"
 	"strings"
 )
@@ -20,9 +21,11 @@ func NewStroke(keys []string) (*Stroke, error) {
 }
 
 func (s *Stroke) Steno() string {
-	parts := make([]string, len(s.Keys))
-	for i, key := range s.Keys {
-		parts[i] = strings.ReplaceAll(key, "-", "")
+	var parts []string
+	for _, key := range s.Keys {
+		if val, ok := config.Layout[key]; ok {
+			parts = append(parts, val)
+		}
 	}
 	return strings.Join(parts, "")
 }

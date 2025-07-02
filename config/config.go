@@ -6,10 +6,13 @@ import (
 	"os"
 )
 
+var Layout map[string]string
+
 type Config struct {
-	Port        string `json:"serial_port"`
-	Baud        int    `json:"baud_rate"`
-	ReadTimeout int    `json:"timeout"`
+	Port        string            `json:"serial_port"`
+	Baud        int               `json:"baud_rate"`
+	ReadTimeout int               `json:"timeout"`
+	Layout      map[string]string `json:"layout"`
 }
 
 func Load(path string) (*Config, error) {
@@ -23,5 +26,6 @@ func Load(path string) (*Config, error) {
 	if err := json.NewDecoder(f).Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("could not decode config: %w", err)
 	}
+	Layout = cfg.Layout
 	return &cfg, nil
 }
