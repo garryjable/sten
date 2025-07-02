@@ -9,6 +9,7 @@
 
 # Add test file
 !./run_tests.sh
+!./build_docker.sh
 
 # allow Go files
 !**/*.go
