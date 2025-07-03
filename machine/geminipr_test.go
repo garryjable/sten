@@ -3,7 +3,6 @@ package machine
 import (
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/tarm/serial"
 )
@@ -54,6 +53,7 @@ var expectedGeminiBits = map[string][BytesPerStroke]byte{
 }
 
 func TestProcessPacket_ValidPacket(t *testing.T) {
+	// Tests if the machine can parse a valid cord packet for dictionary entry "dad"
 	called := false
 	var received []string
 
@@ -62,7 +62,7 @@ func TestProcessPacket_ValidPacket(t *testing.T) {
 		received = keys
 	})
 
-	packet := [BytesPerStroke]byte{0x80, 0x10, 0x00, 0x00, 0x00, 0x00} // T- key only
+	packet := [BytesPerStroke]byte{0x80, 0x30, 0x40, 0x00, 0x02, 0x00} // T- K- A- -D Chord
 
 	err := m.processPacket(packet)
 	if err != nil {
@@ -77,6 +77,7 @@ func TestProcessPacket_ValidPacket(t *testing.T) {
 }
 
 func TestGeminiPacketEncoding(t *testing.T) {
+	// Tests if the machine can parse a valid cord packet for each individual key on the board
 	for expected, packet := range expectedGeminiBits {
 		called := false
 		var received []string
@@ -99,6 +100,7 @@ func TestGeminiPacketEncoding(t *testing.T) {
 }
 
 func TestProcessPacket_InvalidFirstByte(t *testing.T) {
+	// Tests if the machine will error if the MSB of the first byte is not set
 	m := NewGeminiPrMachine("", 0, nil)
 	packet := [BytesPerStroke]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
 	err := m.processPacket(packet)
@@ -108,6 +110,7 @@ func TestProcessPacket_InvalidFirstByte(t *testing.T) {
 }
 
 func TestProcessPacket_InvalidOtherByte(t *testing.T) {
+	// Tests if the machine will error if the MSB of another byte is set
 	m := NewGeminiPrMachine("", 0, nil)
 	packet := [BytesPerStroke]byte{0x80, 0x80, 0x00, 0x00, 0x00, 0x00}
 	err := m.processPacket(packet)
@@ -117,6 +120,7 @@ func TestProcessPacket_InvalidOtherByte(t *testing.T) {
 }
 
 func TestStartStopCapture(t *testing.T) {
+	// Tests if machine will error opening a bad serial port
 	m := NewGeminiPrMachine("/dev/null", 9600, nil)
 	err := m.StartCapture()
 	if err == nil {
@@ -124,7 +128,8 @@ func TestStartStopCapture(t *testing.T) {
 	}
 }
 
-func TestNewGeminiPrMachineDefaults(t *testing.T) {
+func TestNewGeminiPrMachine(t *testing.T) {
+	// Test if machine is created correctly with set values
 	m := NewGeminiPrMachine("test", 1234, nil)
 	if m == nil {
 		t.Fatal("expected machine instance, got nil")
@@ -138,23 +143,10 @@ func TestNewGeminiPrMachineDefaults(t *testing.T) {
 }
 
 func TestReadLoopStops(t *testing.T) {
+	// Test if the stop capture function successfully stops the machine.
 	m := NewGeminiPrMachine("", 0, nil)
 	fakePort := &serial.Port{}
 	m.port = fakePort
 	go m.StopCapture()
 	m.readLoop() // should return quickly
-}
-
-type MockSerialPort struct {
-	readDelay time.Duration
-	error     error
-}
-
-func (m *MockSerialPort) Read(p []byte) (int, error) {
-	time.Sleep(m.readDelay)
-	return 0, m.error
-}
-
-func (m *MockSerialPort) Close() error {
-	return nil
 }
