@@ -13,6 +13,4 @@
 
 # allow Go files
 !**/*.go
-
-# if you ever vendor, you’d whitelist it explicitly:
-#!vendor/
+!*/
