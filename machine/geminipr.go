@@ -32,22 +32,22 @@ type StrokeCallback func([]string)
 
 // GeminiPrMachine represents a Gemini PR stenotype machine.
 type GeminiPrMachine struct {
-	portName    string
-	baudRate    int
-	callback    StrokeCallback
-	serialPort  *serial.Port
-	stopChan    chan struct{}
-	stoppedChan chan struct{}
+	portName string
+	baudRate int
+	callback StrokeCallback
+	port     *serial.Port
+	stopping chan struct{} //
+	stopped  chan struct{}
 }
 
 // NewGeminiPrMachine creates a new Gemini PR machine instance.
 func NewGeminiPrMachine(portName string, baudRate int, cb StrokeCallback) *GeminiPrMachine {
 	return &GeminiPrMachine{
-		portName:    portName,
-		baudRate:    baudRate,
-		callback:    cb,
-		stopChan:    make(chan struct{}),
-		stoppedChan: make(chan struct{}),
+		portName: portName,
+		baudRate: baudRate,
+		callback: cb,
+		stopping: make(chan struct{}),
+		stopped:  make(chan struct{}),
 	}
 }
 
@@ -63,7 +63,7 @@ func (m *GeminiPrMachine) StartCapture() error {
 	if err != nil {
 		return fmt.Errorf("failed to open serial port: %w", err)
 	}
-	m.serialPort = port
+	m.port = port
 
 	go m.readLoop()
 	return nil
@@ -71,25 +71,25 @@ func (m *GeminiPrMachine) StartCapture() error {
 
 // StopCapture stops reading and closes the serial port.
 func (m *GeminiPrMachine) StopCapture() {
-	close(m.stopChan)
-	<-m.stoppedChan
-	if m.serialPort != nil {
-		m.serialPort.Close()
-		m.serialPort = nil
+	close(m.stopping)
+	<-m.stopped
+	if m.port != nil {
+		m.port.Close()
+		m.port = nil
 	}
 }
 
 func (m *GeminiPrMachine) readLoop() {
-	defer close(m.stoppedChan)
+	defer close(m.stopped)
 
-	packet := make([]byte, BytesPerStroke)
+	packet := [6]byte{}
 
 	for {
 		select {
-		case <-m.stopChan:
+		case <-m.stopping:
 			return
 		default:
-			n, err := m.serialPort.Read(packet)
+			n, err := m.port.Read(packet[:])
 			if err != nil {
 				// Only print unexpected errors
 				if !errors.Is(err, os.ErrDeadlineExceeded) && err != io.EOF {
@@ -108,7 +108,7 @@ func (m *GeminiPrMachine) readLoop() {
 }
 
 // processPacket validates and decodes a Gemini PR packet.
-func (m *GeminiPrMachine) processPacket(packet []byte) error {
+func (m *GeminiPrMachine) processPacket(packet [BytesPerStroke]byte) error {
 	// Validate packet: first byte MSB must be 1, others must be 0
 	if packet[0]&0x80 == 0 {
 		return errors.New("first byte MSB not set")
