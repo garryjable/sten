@@ -25,6 +25,9 @@ var (
 	}
 )
 
+// StrokeCallback is the function type called when a stroke is decoded.
+type StrokeCallback func([]string)
+
 // GeminiPrMachine represents a Gemini PR stenotype machine.
 type GeminiPrMachine struct {
 	portName    string
@@ -33,4 +36,15 @@ type GeminiPrMachine struct {
 	serialPort  *serial.Port
 	stopChan    chan struct{}
 	stoppedChan chan struct{}
+}
+
+// NewGeminiPrMachine creates a new Gemini PR machine instance.
+func NewGeminiPrMachine(portName string, baudRate int, cb StrokeCallback) *GeminiPrMachine {
+	return &GeminiPrMachine{
+		portName:    portName,
+		baudRate:    baudRate,
+		callback:    cb,
+		stopChan:    make(chan struct{}),
+		stoppedChan: make(chan struct{}),
+	}
 }
