@@ -1,6 +1,15 @@
 package machine
 
-import "github.com/tarm/serial"
+import (
+	"errors"
+	"fmt"
+	"io"
+	"log"
+	"os"
+	"time"
+
+	"github.com/tarm/serial"
+)
 
 const (
 	BytesPerStroke = 6
@@ -13,6 +22,7 @@ const (
 // such, there are really only seven bits of steno data in each packet
 // byte. This is why the STENO_KEY_CHART below is visually presented as
 // six rows of seven elements instead of six rows of eight elements.
+
 var (
 	// Gemini PR key chart - 6 rows * 7 bits
 	stenoKeyChart = []string{
@@ -33,7 +43,7 @@ type GeminiPrMachine struct {
 	portName    string
 	baudRate    int
 	callback    StrokeCallback
-	serialPort  *serial.Port
+	port        *serial.Port
 	stopChan    chan struct{}
 	stoppedChan chan struct{}
 }
@@ -47,4 +57,93 @@ func NewGeminiPrMachine(portName string, baudRate int, cb StrokeCallback) *Gemin
 		stopChan:    make(chan struct{}),
 		stoppedChan: make(chan struct{}),
 	}
+}
+
+// StartCapture opens the serial port and starts reading strokes.
+func (m *GeminiPrMachine) StartCapture() error {
+	c := &serial.Config{
+		Name:        m.portName,
+		Baud:        m.baudRate,
+		ReadTimeout: time.Second * 2,
+	}
+
+	port, err := serial.OpenPort(c)
+	if err != nil {
+		return fmt.Errorf("failed to open serial port: %w", err)
+	}
+	m.port = port
+
+	go m.readLoop()
+	return nil
+}
+
+// StopCapture stops reading and closes the serial port.
+func (m *GeminiPrMachine) StopCapture() {
+	close(m.stopChan)
+	<-m.stoppedChan
+	if m.port != nil {
+		m.port.Close()
+		m.port = nil
+	}
+}
+
+func (m *GeminiPrMachine) readLoop() {
+	defer close(m.stoppedChan)
+
+	packet := [BytesPerStroke]byte{}
+
+	for {
+		select {
+		case <-m.stopChan:
+			return
+		default:
+			n, err := m.port.Read(packet[:])
+			if err != nil {
+				// Only print unexpected errors
+				if !errors.Is(err, os.ErrDeadlineExceeded) && err != io.EOF {
+					log.Printf("serial read error: %v", err)
+				}
+				continue
+			}
+			if n != BytesPerStroke {
+				continue
+			}
+			if err := m.processPacket(packet); err != nil {
+				log.Printf("invalid packet: %v", err)
+			}
+		}
+	}
+}
+
+// processPacket validates and decodes a Gemini PR packet.
+func (m *GeminiPrMachine) processPacket(packet [6]byte) error {
+	// Validate packet: first byte MSB must be 1, others must be 0
+	if packet[0]&0x80 == 0 {
+		return errors.New("first byte MSB not set")
+	}
+	for i := 1; i < len(packet); i++ {
+		if packet[i]&0x80 != 0 {
+			return fmt.Errorf("byte %d MSB set", i)
+		}
+	}
+
+	stenoKeys := []string{}
+
+	for i, b := range packet {
+		for bit := 1; bit <= 7; bit++ {
+			mask := byte(0x80 >> bit)
+			if b&mask != 0 {
+				index := i*7 + (bit - 1)
+				if index < len(stenoKeyChart) {
+					stenoKeys = append(stenoKeys, stenoKeyChart[index])
+				}
+			}
+		}
+	}
+
+	// Notify callback with decoded keys
+	if m.callback != nil && len(stenoKeys) > 0 {
+		m.callback(stenoKeys)
+	}
+	return nil
 }
