@@ -53,7 +53,7 @@ var expectedGeminiBits = map[string][BytesPerStroke]byte{
 	"-Z":   {0x80, 0x00, 0x00, 0x00, 0x00, 0x01},
 }
 
-func TestProcessPacket_ValidPacket(t *testing.T) {
+func TestProcessPacket_ValidChordPacket(t *testing.T) {
 	called := false
 	var received []string
 
@@ -62,7 +62,9 @@ func TestProcessPacket_ValidPacket(t *testing.T) {
 		received = keys
 	})
 
-	packet := [BytesPerStroke]byte{0x80, 0x10, 0x00, 0x00, 0x00, 0x00} // T- key only
+	packet := [BytesPerStroke]byte{0x80, 0x18, 0x30, 0x00, 0x51, 0x00} // T- K- A- O- -P -L -D Chord spells "doomed"
+
+	expected := []string{"T-", "K-", "A-", "O-", "-P", "-L", "-D"}
 
 	err := m.processPacket(packet)
 	if err != nil {
@@ -71,8 +73,14 @@ func TestProcessPacket_ValidPacket(t *testing.T) {
 	if !called {
 		t.Fatal("callback was not called")
 	}
-	if len(received) == 0 || received[0] != "T-" {
-		t.Errorf("expected T-, got %v", received)
+	if len(received) == 0 {
+		t.Errorf("expected stroke, got %v", received)
+	}
+
+	for i, key := range expected {
+		if received[i] != key {
+			t.Errorf("expected %s as %d key, got %v", key, i, received[0])
+		}
 	}
 }
 
