@@ -7,6 +7,8 @@ import (
 )
 
 func TestLoadDictionary(t *testing.T) {
+	// test load dictionaries functionality with a dummy dictionary.
+
 	// Ensure the directory exists
 	dir := "test_dictionaries"
 	err := os.MkdirAll(dir, 0755)

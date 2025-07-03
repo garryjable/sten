@@ -7,6 +7,7 @@ import (
 )
 
 func TestStrokeTranslation(t *testing.T) {
+	// Test steno translation from key codes to standard steno notation determined by layout config
 	config.Layout = map[string]string{
 		"S1-": "S",
 		"T-":  "T",

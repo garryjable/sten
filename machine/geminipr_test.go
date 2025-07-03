@@ -53,7 +53,7 @@ var expectedGeminiBits = map[string][BytesPerStroke]byte{
 }
 
 func TestProcessPacket_ValidPacket(t *testing.T) {
-	// Tests if the machine can parse a valid cord packet for dictionary entry "dad"
+	// Tests if the machine can parse a valid cord packet for dictionary entry "doomed"
 	called := false
 	var received []string
 
@@ -62,9 +62,9 @@ func TestProcessPacket_ValidPacket(t *testing.T) {
 		received = keys
 	})
 
-	packet := [BytesPerStroke]byte{0x80, 0x18, 0x30, 0x00, 0x51, 0x00} // T- K- A- O- -P -L -D Chord spells "doomed"
+	packet := [BytesPerStroke]byte{0x80, 0x18, 0x30, 0x00, 0x51, 0x00} // T- K- A- O- -P -L -D chord
 
-	expected := []string{"T-", "K-", "A-", "O-", "-P", "-L", "-D"}
+	expected := []string{"T-", "K-", "A-", "O-", "-P", "-L", "-D"} // spells doomed in steno
 
 	err := m.processPacket(packet)
 	if err != nil {

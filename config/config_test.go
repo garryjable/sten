@@ -6,6 +6,7 @@ import (
 )
 
 func TestLoadConfig(t *testing.T) {
+	// test load config functions properly
 	data := `{
 		"serial_port": "/dev/testport",
 		"layout": { "S1-": "S", "T-": "T" }
