@@ -1,7 +1,7 @@
 {
     "serial_port": "/dev/ttyACM0",
     "baud_rate": 9600,
-    "time_out": 100, 
+    "time_out": 100,
     "layout": {
         "S1-": "#",
         "S2-": "S",
