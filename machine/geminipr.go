@@ -15,21 +15,36 @@ import (
 	"github.com/tarm/serial"
 )
 
-const (
-	BytesPerStroke = 6
-)
+// Standard stenotype interface for a Gemini PR machine.
+//
+//     KEYS_LAYOUT =
+//         #1 #2  #3 #4 #5 #6 #7 #8 #9 #A #B #C
+//         Fn S1- T- P- H- *1 *3 -F -P -L -T -D
+//            S2- K- W- R- *2 *4 -R -B -G -S -Z
+//                   A- O-       -E -U
+//         pwr
+//         res1
+//         res2
 
-var (
-	// Gemini PR key chart - 6 rows * 7 bits
-	stenoKeyChart = []string{
-		"Fn", "#1", "#2", "#3", "#4", "#5", "#6",
-		"S1-", "S2-", "T-", "K-", "P-", "W-", "H-",
-		"R-", "A-", "O-", "*1", "*2", "res1", "res2",
-		"pwr", "*3", "*4", "-E", "-U", "-F", "-R",
-		"-P", "-B", "-L", "-G", "-T", "-S", "-D",
-		"#7", "#8", "#9", "#A", "#B", "#C", "-Z",
-	}
-)
+// In the Gemini PR protocol, each packet consists of exactly six bytes
+// and the most significant bit (MSB) of every byte is used exclusively
+// to indicate whether that byte is the first byte of the packet
+// (MSB=1) or one of the remaining five bytes of the packet (MSB=0). As
+// such, there are really only seven bits of steno data in each packet
+// byte. This is why the keyChart below is represented as
+// six rows of seven elements instead of six rows of eight elements.
+
+type StrokePacket [6]byte
+type GeminiBoard [6][7]string
+
+var keyChart = GeminiBoard{
+	{"Fn", "#1", "#2", "#3", "#4", "#5", "#6"},
+	{"S1-", "S2-", "T-", "K-", "P-", "W-", "H-"},
+	{"R-", "A-", "O-", "*1", "*2", "res1", "res2"},
+	{"pwr", "*3", "*4", "-E", "-U", "-F", "-R"},
+	{"-P", "-B", "-L", "-G", "-T", "-S", "-D"},
+	{"#7", "#8", "#9", "#A", "#B", "#C", "-Z"},
+}
 
 // StrokeCallback is the function type called when a stroke is decoded.
 type StrokeCallback func([]string)
@@ -83,63 +98,56 @@ func (m *GeminiPrMachine) StopCapture() {
 	}
 }
 
+// reads packets and sends output via the callback
 func (m *GeminiPrMachine) readLoop() {
 	defer close(m.stopped)
 
-	packet := [6]byte{}
+	packet := StrokePacket{}
 
 	for {
 		select {
 		case <-m.stopping:
 			return
 		default:
-			n, err := m.port.Read(packet[:])
+			_, err := m.port.Read(packet[:])
 			if err != nil {
 				// Only print unexpected errors
-				if !errors.Is(err, os.ErrDeadlineExceeded) && err != io.EOF {
-					log.Printf("serial read error: %v", err)
+				if errors.Is(err, os.ErrDeadlineExceeded) || err == io.EOF {
+					continue
 				}
-				continue
+				log.Printf("serial read error: %v", err)
 			}
-			if n != BytesPerStroke {
-				continue
-			}
-			if err := m.processPacket(packet); err != nil {
-				log.Printf("invalid packet: %v", err)
-			}
+			m.callback(packet.toStroke())
 		}
 	}
 }
 
-// processPacket validates and decodes a Gemini PR packet.
-func (m *GeminiPrMachine) processPacket(packet [BytesPerStroke]byte) error {
-	// Validate packet: first byte MSB must be 1, others must be 0
-	if packet[0]&0x80 == 0 {
-		return errors.New("first byte MSB not set")
+// toStroke decodes a Gemini PR packet into a chord of key presses
+func (packet StrokePacket) toStroke() []string {
+	if !packet.isValid() {
+		return nil
 	}
-	for i := 1; i < len(packet); i++ {
-		if packet[i]&0x80 != 0 {
-			return fmt.Errorf("byte %d MSB set", i)
-		}
-	}
-
-	stenoKeys := []string{}
-
-	for i, b := range packet {
+	stroke := make([]string, 0, 42) // max keys
+	for row, b := range packet {
 		for bit := 1; bit <= 7; bit++ {
 			mask := byte(0x80 >> bit)
 			if b&mask != 0 {
-				index := i*7 + (bit - 1)
-				if index < len(stenoKeyChart) {
-					stenoKeys = append(stenoKeys, stenoKeyChart[index])
-				}
+				stroke = append(stroke, keyChart[row][bit-1])
 			}
 		}
 	}
+	return stroke
+}
 
-	// Notify callback with decoded keys
-	if m.callback != nil && len(stenoKeys) > 0 {
-		m.callback(stenoKeys)
+// Validate packet: first byte MSB must be 1, others must be 0
+func (p StrokePacket) isValid() bool {
+	if p[0]&0x80 == 0 {
+		return false
 	}
-	return nil
+	for _, b := range p[1:] {
+		if b&0x80 != 0 {
+			return false
+		}
+	}
+	return true
 }
