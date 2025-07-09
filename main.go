@@ -40,7 +40,6 @@ func main() {
 
 	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(keys []string) {
 		word := e.TranslateSteno(keys)
-		fmt.Print(word + " ")
 		_ = out.TypeString(word + " ")
 	})
 	// Start machine capture

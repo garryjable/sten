@@ -3,120 +3,147 @@ package output
 import (
 	"fmt"
 	"log"
-	"time"
+	"strings"
 	"unicode"
 
-	uinput "gopkg.in/bendahl/uinput.v1"
+	"github.com/go-vgo/robotgo"
 )
 
+// Output handles keyboard output using robotgo
 type Output struct {
-	keyboard uinput.Keyboard
+	// No internal state needed for robotgo, but kept for interface compatibility
 }
 
+// NewVirtualOutput initializes a robotgo-based output
 func NewVirtualOutput() (*Output, error) {
-	kb, err := uinput.CreateKeyboard("/dev/uinput", []byte("dotterel-virtual"))
-	if err != nil {
-		return nil, err
+	if !robotgo.IsValid() {
+		return nil, fmt.Errorf("robotgo initialization failed")
 	}
-	return &Output{keyboard: kb}, nil
+	return &Output{}, nil
 }
 
-func (v *Output) Close() error {
-	return v.keyboard.Close()
+// Close is a no-op for robotgo (no resources to close)
+func (o *Output) Close() error {
+	return nil
 }
 
-func (v *Output) TypeString(s string) error {
+// TypeString types a string using robotgo
+func (o *Output) TypeString(s string) error {
 	for _, r := range s {
-		if err := v.TypeRune(r); err != nil {
+		if err := o.TypeRune(r); err != nil {
 			log.Printf("failed to type rune %q: %v", r, err)
 		}
-		time.Sleep(5 * time.Millisecond)
 	}
 	return nil
 }
 
-func (v *Output) TypeRune(r rune) error {
+// TypeRune types a single rune, handling shift for uppercase
+func (o *Output) TypeRune(r rune) error {
 	key, shifted, ok := runeToKey(r)
 	if !ok {
 		return fmt.Errorf("unsupported rune: %q", r)
 	}
 	if shifted {
-		// _ = v.keyboard.KeyDown(uinput.KeyLeftShift)
-		println("shifted")
+		robotgo.KeyDown("shift")
 	}
-	err := v.keyboard.KeyPress(key)
+	robotgo.KeyTap(key)
 	if shifted {
-		println("unshifted")
-		// _ = v.keyboard.KeyUp(uinput.KeyLeftShift)
+		robotgo.KeyUp("shift")
 	}
-	return err
+	return nil
 }
 
-// --- keycode mapping ---
-
-func runeToKey(r rune) (int, bool, bool) {
-	switch r {
-	case 'a', 'A':
-		return uinput.KeyA, unicode.IsUpper(r), true
-	case 'b', 'B':
-		return uinput.KeyB, unicode.IsUpper(r), true
-	case 'c', 'C':
-		return uinput.KeyC, unicode.IsUpper(r), true
-	case 'd', 'D':
-		return uinput.KeyD, unicode.IsUpper(r), true
-	case 'e', 'E':
-		return uinput.KeyE, unicode.IsUpper(r), true
-	case 'f', 'F':
-		return uinput.KeyF, unicode.IsUpper(r), true
-	case 'g', 'G':
-		return uinput.KeyG, unicode.IsUpper(r), true
-	case 'h', 'H':
-		return uinput.KeyH, unicode.IsUpper(r), true
-	case 'i', 'I':
-		return uinput.KeyI, unicode.IsUpper(r), true
-	case 'j', 'J':
-		return uinput.KeyJ, unicode.IsUpper(r), true
-	case 'k', 'K':
-		return uinput.KeyK, unicode.IsUpper(r), true
-	case 'l', 'L':
-		return uinput.KeyL, unicode.IsUpper(r), true
-	case 'm', 'M':
-		return uinput.KeyM, unicode.IsUpper(r), true
-	case 'n', 'N':
-		return uinput.KeyN, unicode.IsUpper(r), true
-	case 'o', 'O':
-		return uinput.KeyO, unicode.IsUpper(r), true
-	case 'p', 'P':
-		return uinput.KeyP, unicode.IsUpper(r), true
-	case 'q', 'Q':
-		return uinput.KeyQ, unicode.IsUpper(r), true
-	case 'r', 'R':
-		return uinput.KeyR, unicode.IsUpper(r), true
-	case 's', 'S':
-		return uinput.KeyS, unicode.IsUpper(r), true
-	case 't', 'T':
-		return uinput.KeyT, unicode.IsUpper(r), true
-	case 'u', 'U':
-		return uinput.KeyU, unicode.IsUpper(r), true
-	case 'v', 'V':
-		return uinput.KeyV, unicode.IsUpper(r), true
-	case 'w', 'W':
-		return uinput.KeyW, unicode.IsUpper(r), true
-	case 'x', 'X':
-		return uinput.KeyX, unicode.IsUpper(r), true
-	case 'y', 'Y':
-		return uinput.KeyY, unicode.IsUpper(r), true
-	case 'z', 'Z':
-		return uinput.KeyZ, unicode.IsUpper(r), true
-	case ' ':
-		return uinput.KeySpace, false, true
-	case '\n':
-		return uinput.KeyEnter, false, true
-	case '.':
-		return uinput.KeyDot, false, true
-	case ',':
-		return uinput.KeyComma, false, true
-	default:
-		return 0, false, false
+func runeToKey(r rune) (string, bool, bool) {
+	// Handle Latin letters (a-z, A-Z)
+	if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+		return strings.ToLower(string(r)), unicode.IsUpper(r), true
 	}
+	// Handle digits
+	switch r {
+	case '0':
+		return "0", false, true
+	case '1':
+		return "1", false, true
+	case '2':
+		return "2", false, true
+	case '3':
+		return "3", false, true
+	case '4':
+		return "4", false, true
+	case '5':
+		return "5", false, true
+	case '6':
+		return "6", false, true
+	case '7':
+		return "7", false, true
+	case '8':
+		return "8", false, true
+	case '9':
+		return "9", false, true
+	}
+	// Handle common punctuation and special keys
+	switch r {
+	case ' ':
+		return "space", false, true
+	case '\n':
+		return "enter", false, true
+	case '.':
+		return ".", false, true
+	case ',':
+		return ",", false, true
+	case '!':
+		return "1", true, true
+	case '@':
+		return "2", true, true
+	case '#':
+		return "3", true, true
+	case '$':
+		return "4", true, true
+	case '%':
+		return "5", true, true
+	case '^':
+		return "6", true, true
+	case '&':
+		return "7", true, true
+	case '*':
+		return "8", true, true
+	case '(':
+		return "9", true, true
+	case ')':
+		return "0", true, true
+	case '-':
+		return "-", false, true
+	case '_':
+		return "-", true, true
+	case '=':
+		return "=", false, true
+	case '+':
+		return "=", true, true
+	case ';':
+		return ";", false, true
+	case ':':
+		return ";", true, true
+	case '\'':
+		return "'", false, true
+	case '"':
+		return "'", true, true
+	case '/':
+		return "/", false, true
+	case '?':
+		return "/", true, true
+	case '[':
+		return "[", false, true
+	case ']':
+		return "]", false, true
+	case '{':
+		return "[", true, true
+	case '}':
+		return "]", true, true
+	case '\\':
+		return "\\", false, true
+	case '|':
+		return "\\", true, true
+	}
+	// For all other Unicode runes, return the rune as a string for TypeStr
+	return string(r), false, false
 }
