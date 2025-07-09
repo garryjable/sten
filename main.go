@@ -1,9 +1,6 @@
 // Copyright (c) 2025 Garrett Jennings.
+// This File is part of gplover. Gplover is free software under GPLv3 .
 // See LICENSE.txt for details.
-// This file is part of GPlover.
-// GPlover is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
-// This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
-// You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 package main
 
@@ -18,10 +15,10 @@ import (
 	"gplover/dictionary"
 	"gplover/engine"
 	"gplover/machine"
+	"gplover/output"
 )
 
 func main() {
-
 	cfg, err := config.Load("config.json")
 	if err != nil {
 		log.Fatalf("Failed to load config: %v", err)
@@ -34,11 +31,18 @@ func main() {
 	}
 	e := engine.NewEngine(dict)
 
+	// Create virtual Output
+	out, err := output.NewVirtualOutput()
+	if err != nil {
+		log.Fatalf("Failed to init virtual keyboard: %v", err)
+	}
+	defer out.Close()
+
 	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(keys []string) {
 		word := e.TranslateSteno(keys)
 		fmt.Print(word + " ")
+		_ = out.TypeString(word + " ")
 	})
-
 	// Start machine capture
 	err = gemini.StartCapture()
 	if err != nil {
@@ -46,11 +50,11 @@ func main() {
 	}
 	defer gemini.StopCapture()
 
-	fmt.Println("Dotterel now running. Press Ctrl+C to quit.")
+	fmt.Println("Gplover now running. Press Ctrl+C to quit.")
 
 	// Handle Ctrl+C
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT)
 	<-sigs
-	fmt.Println("\n[dotterel] Quit with Ctrl+C")
+	fmt.Println("\n[gplover] Quit with Ctrl+C")
 }
