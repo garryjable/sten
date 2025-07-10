@@ -1,18 +1,17 @@
-// Copyright (c) 2025 Garrett Jennings.
+// Copyright (c) 2025 Garrett JenningsStrokePacket.
 // This File is part of gplover. Gplover is free software under GPLv3 .
 // See LICENSE.txt for details.
 
 package machine
 
 import (
-	"errors"
 	"testing"
 	"time"
 
 	"github.com/tarm/serial"
 )
 
-var expectedGeminiBits = map[string][BytesPerStroke]byte{
+var expectedGeminiBits = map[string]StrokePacket{
 	"Fn":   {0xC0, 0x00, 0x00, 0x00, 0x00, 0x00},
 	"#1":   {0xA0, 0x00, 0x00, 0x00, 0x00, 0x00},
 	"#2":   {0x90, 0x00, 0x00, 0x00, 0x00, 0x00},
@@ -58,73 +57,51 @@ var expectedGeminiBits = map[string][BytesPerStroke]byte{
 }
 
 func TestProcessPacket_ValidChordPacket(t *testing.T) {
-	called := false
-	var received []string
 
-	m := NewGeminiPrMachine("", 0, func(keys []string) {
-		called = true
-		received = keys
-	})
-
-	packet := [BytesPerStroke]byte{0x80, 0x18, 0x30, 0x00, 0x51, 0x00} // T- K- A- O- -P -L -D Chord spells "doomed"
+	packet := StrokePacket{0x80, 0x18, 0x30, 0x00, 0x51, 0x00} // T- K- A- O- -P -L -D Chord spells "doomed"
 
 	expected := []string{"T-", "K-", "A-", "O-", "-P", "-L", "-D"}
 
-	err := m.processPacket(packet)
-	if err != nil {
-		t.Fatalf("expected no error, got %v", err)
+	stroke := packet.toStroke()
+	if stroke == nil {
+		t.Fatalf("packet failed to parse")
 	}
-	if !called {
-		t.Fatal("callback was not called")
-	}
-	if len(received) == 0 {
-		t.Errorf("expected stroke, got %v", received)
+	if len(stroke) == 0 {
+		t.Errorf("expected stroke, got %v", stroke)
 	}
 
 	for i, key := range expected {
-		if received[i] != key {
-			t.Errorf("expected %s as %d key, got %v", key, i, received[0])
+		if stroke[i] != key {
+			t.Errorf("expected %s as %d key, got %v", key, i, stroke[0])
 		}
 	}
 }
 
 func TestGeminiPacketEncoding(t *testing.T) {
 	for expected, packet := range expectedGeminiBits {
-		called := false
-		var received []string
-		m := NewGeminiPrMachine("", 0, func(keys []string) {
-			called = true
-			received = keys
-		})
-
-		err := m.processPacket(packet)
-		if err != nil {
-			t.Fatalf("expected no error, got %v", err)
+		stroke := packet.toStroke()
+		if stroke == nil {
+			t.Fatalf("packet failed to parse")
 		}
-		if !called {
-			t.Fatal("callback was not called")
-		}
-		if len(received) == 0 || received[0] != expected {
-			t.Errorf("expected T-, got %v", received)
+		if len(stroke) == 0 || stroke[0] != expected {
+			t.Errorf("expected T-, got %v", stroke)
 		}
 	}
 }
 
 func TestProcessPacket_InvalidFirstByte(t *testing.T) {
-	m := NewGeminiPrMachine("", 0, nil)
-	packet := [BytesPerStroke]byte{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
-	err := m.processPacket(packet)
-	if err == nil || err.Error() != "first byte MSB not set" {
-		t.Errorf("expected first byte MSB error, got %v", err)
+	packet := StrokePacket{0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	stroke := packet.toStroke()
+	if stroke != nil {
+		t.Errorf("Packet parsed incorrectly")
 	}
 }
 
 func TestProcessPacket_InvalidOtherByte(t *testing.T) {
-	m := NewGeminiPrMachine("", 0, nil)
-	packet := [BytesPerStroke]byte{0x80, 0x80, 0x00, 0x00, 0x00, 0x00}
-	err := m.processPacket(packet)
-	if err == nil || !errors.Is(err, err) {
-		t.Errorf("expected byte 1 MSB set error, got %v", err)
+	packet := StrokePacket{0x80, 0x80, 0x00, 0x00, 0x00, 0x00}
+	stroke := packet.toStroke()
+	if stroke != nil {
+		t.Errorf("Packet parsed incorrectly")
 	}
 }
 
@@ -153,7 +130,8 @@ func TestReadLoopStops(t *testing.T) {
 	m := NewGeminiPrMachine("", 0, nil)
 	fakePort := &serial.Port{}
 	m.port = fakePort
-	go m.StopCapture()
+	m.StartCapture()
+	m.StopCapture()
 	m.readLoop() // should return quickly
 }
 
