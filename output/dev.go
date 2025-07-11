@@ -16,12 +16,6 @@ func (d *DevOutput) Type(text string) {
 	robotgo.TypeStr(text)
 }
 
-func (d *DevOutput) Backspace(n int) {
-	for i := 0; i < n; i++ {
-		robotgo.KeyTap("backspace")
-	}
-}
-
 func NewVirtualOutput() (*DevOutput, error) {
 	if !robotgo.IsValid() {
 		return nil, fmt.Errorf("robotgo initialization failed")
