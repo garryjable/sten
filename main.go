@@ -39,6 +39,7 @@ func main() {
 	defer out.Close()
 
 	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(keys []string) {
+		// word := t.translate(stroke)
 		word := e.TranslateSteno(keys)
 		_ = out.TypeString(word + " ")
 	})

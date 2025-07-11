@@ -63,3 +63,11 @@ func totalKeys(strokeSeq []*Stroke) int {
 	}
 	return count
 }
+
+func RtfcreKey(strokes []Stroke) []string {
+	keys := make([]string, len(strokes))
+	for i, stroke := range strokes {
+		keys[i] = strings.Join(stroke.Keys, "") // or however you serialize a stroke
+	}
+	return keys
+}

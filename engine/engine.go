@@ -24,7 +24,7 @@ func (e *Engine) TranslateSteno(keys []string) string {
 	}
 	word, ok := e.Dict.Lookup(stroke.Steno())
 	if !ok {
-		return "[" + stroke.Steno() + "]"
+		return stroke.Steno()
 	}
 	return word
 }
