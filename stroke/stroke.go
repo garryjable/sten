@@ -38,14 +38,6 @@ func (s *Stroke) IsCorrection() bool {
 	return s.Steno() == undoStroke
 }
 
-func (s *Stroke) String() string {
-	prefix := ""
-	if s.IsCorrection() {
-		prefix = "*"
-	}
-	return prefix + "Stroke(" + s.Steno() + " : [" + strings.Join(s.Keys, ", ") + "])"
-}
-
 func SortStrokes(strokes [][]*Stroke) {
 	sort.Slice(strokes, func(i, j int) bool {
 		// Sort by number of strokes, then number of keys
@@ -64,10 +56,10 @@ func totalKeys(strokeSeq []*Stroke) int {
 	return count
 }
 
-func RtfcreKey(strokes []Stroke) []string {
+func ToRtfcre(strokes []Stroke) []string {
 	keys := make([]string, len(strokes))
 	for i, stroke := range strokes {
-		keys[i] = strings.Join(stroke.Keys, "") // or however you serialize a stroke
+		keys[i] = stroke.Steno() // or however you serialize a stroke
 	}
 	return keys
 }

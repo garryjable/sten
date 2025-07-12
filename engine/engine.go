@@ -14,14 +14,13 @@ type Engine struct {
 }
 
 func NewEngine(dict dictionary.Dictionary) *Engine {
-	return &Engine{Dict: dict}
+	e := &Engine{
+		Dict: dict,
+	}
+	return e
 }
 
-func (e *Engine) TranslateSteno(keys []string) string {
-	stroke, err := stroke.NewStroke(keys)
-	if err != nil {
-		return "[error]"
-	}
+func (e *Engine) TranslateSteno(stroke *stroke.Stroke) string {
 	word, ok := e.Dict.Lookup(stroke.Steno())
 	if !ok {
 		return stroke.Steno()

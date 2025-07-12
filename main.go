@@ -13,9 +13,10 @@ import (
 
 	"gplover/config"
 	"gplover/dictionary"
-	"gplover/engine"
 	"gplover/machine"
 	"gplover/output"
+	"gplover/stroke"
+	"gplover/translator"
 )
 
 func main() {
@@ -29,7 +30,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading dictionary: %v", err)
 	}
-	e := engine.NewEngine(dict)
+	//e := engine.NewEngine(dict)
 
 	// Create virtual Output
 	out, err := output.NewVirtualOutput()
@@ -38,10 +39,13 @@ func main() {
 	}
 	defer out.Close()
 
-	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(keys []string) {
+	t := translator.NewTranslator(dict, 1000)
+
+	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(stroke *stroke.Stroke) {
 		// word := t.translate(stroke)
-		word := e.TranslateSteno(keys)
-		_ = out.TypeString(word + " ")
+		translation := t.Translate(stroke)
+		_ = out.TypeString(translation.English + " ")
+
 	})
 	// Start machine capture
 	err = gemini.StartCapture()

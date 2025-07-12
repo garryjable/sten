@@ -7,6 +7,7 @@ package machine
 import (
 	"errors"
 	"fmt"
+	"gplover/stroke"
 	"io"
 	"log"
 	"os"
@@ -47,7 +48,7 @@ var keyChart = GeminiBoard{
 }
 
 // StrokeCallback is the function type called when a stroke is decoded.
-type StrokeCallback func([]string)
+type StrokeCallback func(*stroke.Stroke)
 
 // GeminiPrMachine represents a Gemini PR stenotype machine.
 type GeminiPrMachine struct {
@@ -57,6 +58,10 @@ type GeminiPrMachine struct {
 	port     *serial.Port
 	stopping chan struct{} //
 	stopped  chan struct{}
+}
+
+func (m *GeminiPrMachine) SetCallback(cb StrokeCallback) {
+	m.callback = cb
 }
 
 // NewGeminiPrMachine creates a new Gemini PR machine instance.
@@ -117,26 +122,29 @@ func (m *GeminiPrMachine) readLoop() {
 				}
 				log.Printf("serial read error: %v", err)
 			}
-			m.callback(packet.toStroke())
+			stroke, err := packet.toStroke()
+			if err == nil {
+				m.callback(stroke)
+			}
 		}
 	}
 }
 
 // toStroke decodes a Gemini PR packet into a chord of key presses
-func (packet StrokePacket) toStroke() []string {
+func (packet StrokePacket) toStroke() (*stroke.Stroke, error) {
 	if !packet.isValid() {
-		return nil
+		return &stroke.Stroke{}, errors.New("Invalid Stroke Packet")
 	}
-	stroke := make([]string, 0, 42) // max keys
+	keys := make([]string, 0, 42) // max keys
 	for row, b := range packet {
 		for bit := 1; bit <= 7; bit++ {
 			mask := byte(0x80 >> bit)
 			if b&mask != 0 {
-				stroke = append(stroke, keyChart[row][bit-1])
+				keys = append(keys, keyChart[row][bit-1])
 			}
 		}
 	}
-	return stroke
+	return stroke.NewStroke(keys)
 }
 
 // Validate packet: first byte MSB must be 1, others must be 0
