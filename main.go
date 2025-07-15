@@ -26,7 +26,7 @@ func main() {
 	}
 
 	// Load your dictionary
-	dict, err := dictionary.LoadDictionaries("dictionaries")
+	dict, longestOutline, err := dictionary.LoadDictionaries("dictionaries")
 	if err != nil {
 		log.Fatalf("Error loading dictionary: %v", err)
 	}
@@ -39,7 +39,7 @@ func main() {
 	}
 	defer out.Close()
 
-	t := translator.NewTranslator(dict, 1000)
+	t := translator.NewTranslator(dict, 1000, longestOutline)
 
 	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(stroke *stroke.Stroke) {
 		// word := t.translate(stroke)

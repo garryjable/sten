@@ -15,12 +15,13 @@ import (
 
 type Dictionary map[string]string
 
-func LoadDictionaries(folder string) (map[string]string, error) {
+func LoadDictionaries(folder string) (map[string]string, int, error) {
 	combined := make(map[string]string)
+	longestOutline := 0
 
 	entries, err := os.ReadDir(folder)
 	if err != nil {
-		return nil, fmt.Errorf("read dir: %w", err)
+		return nil, longestOutline, fmt.Errorf("read dir: %w", err)
 	}
 
 	for _, entry := range entries {
@@ -44,10 +45,18 @@ func LoadDictionaries(folder string) (map[string]string, error) {
 
 		for k, v := range dict {
 			combined[k] = v
+
+			// Count strokes: number of slashes + 1
+			count := strings.Count(k, "/") + 1
+			if count > longestOutline {
+				longestOutline = count
+			}
 		}
 	}
 
-	return combined, nil
+	fmt.Printf("Loaded %d entries across dictionaries. Max outline length: %d strokes.\n", len(combined), longestOutline)
+
+	return combined, longestOutline, nil
 }
 
 func (d Dictionary) Lookup(stroke string) (string, bool) {

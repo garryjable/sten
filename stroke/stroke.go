@@ -56,10 +56,10 @@ func totalKeys(strokeSeq []*Stroke) int {
 	return count
 }
 
-func ToRtfcre(strokes []Stroke) []string {
-	keys := make([]string, len(strokes))
+func ToRtfcre(strokes []Stroke) string {
+	chords := make([]string, len(strokes))
 	for i, stroke := range strokes {
-		keys[i] = stroke.Steno() // or however you serialize a stroke
+		chords[i] = stroke.Steno() // or however you serialize a stroke
 	}
-	return keys
+	return strings.Join(chords, "/")
 }

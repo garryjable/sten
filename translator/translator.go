@@ -3,112 +3,115 @@ package translator
 import (
 	"gplover/dictionary"
 	"gplover/stroke"
-	"strings"
 )
 
 // Translation represents a successful dictionary lookup for one or more strokes.
 type Translation struct {
 	Strokes  []stroke.Stroke
-	Rtfcre   []string
+	Outline  string
 	English  string
-	Replaced []Translation
+	Replaced State
 }
 
-// State holds the translation history.
-type State struct {
-	Translations []Translation
-}
+type State []Translation
+
+//type Translation struct {
+//	English      string
+//	Outline		 string
+//}
+//
+//
+//type Translation struct {
+//	Entries []*TranslationStrokes // actual stroke objects
+//	Outline string
+//	English string
+//	Maybe Replaces []*Translation if you want undo
+//}
+
+///type State struct {
+///	History []*StrokeEntry
+///}
 
 // Translator is the main engine for converting strokes to translations.
 type Translator struct {
-	Dict       dictionary.Dictionary
-	State      State
-	UndoBuffer []Translation
-	Listeners  []func([]Translation, []Translation, *Translation)
-	MaxHistory int
+	Dict  dictionary.Dictionary
+	State State
+	// UndoBuffer     []Translation
+	// Listeners      []func([]Translation, []Translation, *Translation)
+	MaxHistory    int
+	MaxOutlineLen int
 }
 
 // NewTranslator creates a new Translator instance.
-func NewTranslator(dict dictionary.Dictionary, maxHistory int) *Translator {
+func NewTranslator(dict dictionary.Dictionary, maxHistory int, maxOutlineLen int) *Translator {
 	return &Translator{
-		Dict:       dict,
-		State:      State{},
-		MaxHistory: maxHistory,
+		Dict:          dict,
+		State:         State{},
+		MaxHistory:    maxHistory,
+		MaxOutlineLen: maxOutlineLen,
 	}
 }
 
-// Translate adds a new stroke and emits the appropriate translations.
 func (tr *Translator) Translate(s *stroke.Stroke) Translation {
-	// Try greedy match from history + this stroke
-	allStrokes := collectStrokes(tr.State.Translations)
-	allStrokes = append(allStrokes, *s)
+	// Build recent strokes including the current one (max length = MaxOutlineLen)
+	recentState := tr.recentState() // need to append stroke
+	recents := recentState.toStrokes()
 
-	maxLen := 42
-	for size := min(len(allStrokes), maxLen); size >= 1; size-- {
-		start := len(allStrokes) - size
-		chunk := allStrokes[start:]
-		rtfcre := stroke.ToRtfcre(chunk)
-		if eng, ok := tr.Dict.Lookup(strings.Join(rtfcre, "")); ok {
+	// Try matching longest possible stroke sequence to shortest (greedy match)
+	for i := 0; i <= len(recents); i++ {
+		candidate := recents[i:] // last N-i strokes
+		outline := stroke.ToRtfcre(append(candidate, *s))
+
+		if eng, ok := tr.Dict.Lookup(outline); ok {
 			t := Translation{
-				Strokes:  chunk,
-				Rtfcre:   rtfcre,
+				Strokes:  candidate,
+				Outline:  outline,
 				English:  eng,
-				Replaced: tr.findReplaced(size),
+				Replaced: recentState,
 			}
 			tr.applyTranslation(t)
 			return t
 		}
 	}
 
-	// Fallback: untranslated stroke
+	// No match: emit raw stroke
 	t := Translation{
 		Strokes: []stroke.Stroke{*s},
-		Rtfcre:  stroke.ToRtfcre([]stroke.Stroke{*s}),
+		Outline: stroke.ToRtfcre([]stroke.Stroke{*s}),
 	}
 	tr.applyTranslation(t)
 	return t
 }
 
 func (tr *Translator) applyTranslation(t Translation) {
-	// Remove replaced entries from history
-	tr.State.Translations = tr.State.Translations[:len(tr.State.Translations)-len(t.Replaced)]
-	tr.State.Translations = append(tr.State.Translations, t)
+	// Remove replaced entries from history and append new entry
+	trimLen := len(tr.State) - len(t.Replaced)
+	tr.State = append(tr.State[:trimLen], t)
 }
 
-func (tr *Translator) findReplaced(strokeCount int) []Translation {
-	var replaced []Translation
-	total := 0
-	for i := len(tr.State.Translations) - 1; i >= 0 && total < strokeCount; i-- {
-		t := tr.State.Translations[i]
-		total += len(t.Strokes)
-		replaced = append([]Translation{t}, replaced...)
+// recentStrokes returns the most recent strokes from translation history,
+// plus the current stroke, trimmed to at most n strokes total.
+func (tr *Translator) recentState() State {
+	var result []Translation
+	strokeCount := 1
+
+	for i := len(tr.State) - 1; i >= 0; i-- {
+		t := tr.State[i]
+		strokeCount += len(t.Strokes)
+		if strokeCount >= tr.MaxOutlineLen {
+			break
+		}
+
+		result = append(State{t}, result...)
 	}
-	return replaced
+
+	return result
 }
 
-func (tr *Translator) UndoLast() []Translation {
-	if len(tr.State.Translations) == 0 {
-		return nil
-	}
-	last := tr.State.Translations[len(tr.State.Translations)-1]
-	tr.State.Translations = tr.State.Translations[:len(tr.State.Translations)-1]
-	if len(last.Replaced) > 0 {
-		tr.State.Translations = append(tr.State.Translations, last.Replaced...)
-	}
-	return []Translation{last}
-}
-
-func collectStrokes(ts []Translation) []stroke.Stroke {
+func (s *State) toStrokes() []stroke.Stroke {
 	var strokes []stroke.Stroke
-	for _, t := range ts {
+	for _, t := range *s {
 		strokes = append(strokes, t.Strokes...)
 	}
 	return strokes
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
