@@ -135,16 +135,16 @@ func (packet StrokePacket) toStroke() (*stroke.Stroke, error) {
 	if !packet.isValid() {
 		return &stroke.Stroke{}, errors.New("Invalid Stroke Packet")
 	}
-	keys := make([]string, 0, 42) // max keys
+	stroke := make(stroke.Stroke, 0, 42) // max keys
 	for row, b := range packet {
 		for bit := 1; bit <= 7; bit++ {
 			mask := byte(0x80 >> bit)
 			if b&mask != 0 {
-				keys = append(keys, keyChart[row][bit-1])
+				stroke = append(stroke, keyChart[row][bit-1])
 			}
 		}
 	}
-	return stroke.NewStroke(keys)
+	return &stroke, nil
 }
 
 // Validate packet: first byte MSB must be 1, others must be 0

@@ -39,12 +39,12 @@ func main() {
 	}
 	defer out.Close()
 
-	t := translator.NewTranslator(dict, 1000, longestOutline)
+	t := translator.NewTranslator(dict, longestOutline)
 
 	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(stroke *stroke.Stroke) {
 		// word := t.translate(stroke)
-		translation := t.Translate(stroke)
-		_ = out.TypeString(translation.English + " ")
+		translation := t.Translate(stroke.Steno())
+		_ = out.TypeString(translation.Text() + " ")
 
 	})
 	// Start machine capture
