@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-var undoStroke = "*" // you can change this
-
 type Stroke []string
 
 func (s *Stroke) Steno() string {

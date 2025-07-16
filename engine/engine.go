@@ -5,25 +5,21 @@
 package engine
 
 import (
-	"gplover/dictionary"
-	"gplover/stroke"
+	"gplover/output"
+	"gplover/translator"
 )
 
 type Engine struct {
-	Dict dictionary.Dictionary
+	output output.Output
 }
 
-func NewEngine(dict dictionary.Dictionary) *Engine {
+func NewEngine(output output.Output) *Engine {
 	e := &Engine{
-		Dict: dict,
+		output: output,
 	}
 	return e
 }
 
-func (e *Engine) TranslateSteno(stroke *stroke.Stroke) string {
-	word, ok := e.Dict.Lookup(stroke.Steno())
-	if !ok {
-		return stroke.Steno()
-	}
-	return word
+func (e *Engine) Execute(translation *translator.Translation) {
+	e.output.Type(translation.Text())
 }

@@ -13,6 +13,7 @@ import (
 
 	"gplover/config"
 	"gplover/dictionary"
+	"gplover/engine"
 	"gplover/machine"
 	"gplover/output"
 	"gplover/stroke"
@@ -30,21 +31,21 @@ func main() {
 	if err != nil {
 		log.Fatalf("Error loading dictionary: %v", err)
 	}
-	//e := engine.NewEngine(dict)
 
 	// Create virtual Output
 	out, err := output.NewVirtualOutput()
 	if err != nil {
 		log.Fatalf("Failed to init virtual keyboard: %v", err)
 	}
-	defer out.Close()
+
+	e := engine.NewEngine(out)
 
 	t := translator.NewTranslator(dict, longestOutline)
 
 	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(stroke *stroke.Stroke) {
 		// word := t.translate(stroke)
 		translation := t.Translate(stroke.Steno())
-		_ = out.TypeString(translation.Text() + " ")
+		e.Execute(translation)
 
 	})
 	// Start machine capture

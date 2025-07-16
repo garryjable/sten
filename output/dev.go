@@ -12,10 +12,6 @@ import (
 
 type DevOutput struct{}
 
-func (d *DevOutput) Type(text string) {
-	robotgo.TypeStr(text)
-}
-
 func NewVirtualOutput() (*DevOutput, error) {
 	if !robotgo.IsValid() {
 		return nil, fmt.Errorf("robotgo initialization failed")
@@ -23,12 +19,7 @@ func NewVirtualOutput() (*DevOutput, error) {
 	return &DevOutput{}, nil
 }
 
-func (d *DevOutput) Close() error {
-	return nil
-}
-
 // TypeString types a full Unicode string
-func (d *DevOutput) TypeString(s string) error {
-	d.Type(s)
-	return nil
+func (d *DevOutput) Type(s string) {
+	robotgo.TypeStr(s + " ")
 }

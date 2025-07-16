@@ -6,12 +6,13 @@ package translator
 
 import (
 	"gplover/dictionary"
+	"strings"
 )
 
 type State []Translation
 
 type Translation struct {
-	english  string
+	entry    string
 	outline  string
 	prev     *Translation
 	replaced *Translation
@@ -27,12 +28,39 @@ type Translator struct {
 	maxOutlineLen int
 }
 
+func newCommand(entry string, outline string) *Translation {
+	return &Translation{
+		entry:    entry,
+		outline:  outline,
+		prev:     nil,
+		replaced: nil,
+	}
+}
+
+func newWord(entry string, outline string, prev *Translation, latest *Translation) *Translation {
+	return &Translation{
+		entry:    entry,
+		outline:  outline,
+		prev:     prev,
+		replaced: latest,
+	}
+}
+
+func newBlank(outline string, prev *Translation) *Translation {
+	return &Translation{
+		entry:    "",
+		outline:  outline,
+		prev:     prev,
+		replaced: nil,
+	}
+}
+
 // NewTranslator creates a new Translator instance.
 func NewTranslator(dict dictionary.Dictionary, maxOutlineLen int) *Translator {
 	return &Translator{
 		dict: dict,
 		latest: &Translation{
-			english:  "",
+			entry:    "",
 			outline:  "",
 			prev:     nil,
 			replaced: nil,
@@ -43,14 +71,12 @@ func NewTranslator(dict dictionary.Dictionary, maxOutlineLen int) *Translator {
 }
 
 func (tr *Translator) Translate(outline string) *Translation {
-	newNode := &Translation{
-		english:  "",
-		outline:  outline,
-		prev:     tr.latest,
-		replaced: nil,
+	translation := newBlank(outline, tr.latest)
+	latest := tr.getLatest(outline, translation, 0)
+	if !latest.isCommand() {
+		tr.latest = latest
 	}
-	tr.latest = tr.getLatest(outline, newNode, 0)
-	return tr.latest
+	return latest
 }
 
 func (tr *Translator) getLatest(outline string, node *Translation, depth int) *Translation {
@@ -61,26 +87,33 @@ func (tr *Translator) getLatest(outline string, node *Translation, depth int) *T
 				return latest // return the longest match possible
 			}
 		}
-		if english, ok := tr.dict.Lookup(outline); ok {
-			t := &Translation{
-				english:  english,
-				outline:  outline,
-				prev:     node.prev,
-				replaced: tr.latest,
+		if entry, ok := tr.dict.Lookup(outline); ok {
+			if strings.HasPrefix(entry, "=") {
+				return newCommand(entry, outline)
+			} else {
+				return newWord(entry, outline, node.prev, tr.latest)
 			}
-			return t
 		} else if depth == 0 {
-			return node // return new node
+			return node // return blank translation
 		}
 	}
 	return nil // dont seek longer than possible matches
 }
 
 func (t *Translation) Text() string {
-	if t.english != "" {
-		return t.english
+	if t.entry != "" {
+		return t.entry
 	} else {
 		return t.outline
+	}
+
+}
+
+func (t *Translation) isCommand() bool {
+	if strings.HasPrefix(t.entry, "=") {
+		return true
+	} else {
+		return false
 	}
 
 }
