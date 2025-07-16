@@ -1,5 +1,5 @@
 // Copyright (c) 2025 Garrett Jennings.
-// This File is part of gplover. Gplover is free software under GPLv3 .
+// This File is part of sten. Sten is free software under GPLv3 .
 // See LICENSE.txt for details.
 
 package dictionary
@@ -28,9 +28,13 @@ func TestLoadDictionary(t *testing.T) {
 	defer os.Remove(path)
 
 	// Load and test dictionary
-	dict, err := LoadDictionaries(dir)
+	dict, maxOutline, err := LoadDictionaries(dir)
 	if err != nil {
 		t.Fatalf("failed to load dictionary: %v", err)
+	}
+
+	if maxOutline != 8 {
+		t.Errorf("expected %q, counted %q", want, got)
 	}
 
 	got := dict["STKE"]

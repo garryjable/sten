@@ -1,5 +1,5 @@
 // Copyright (c) 2025 Garrett JenningsStrokePacket.
-// This File is part of gplover. Gplover is free software under GPLv3 .
+// This File is part of sten. Sten is free software under GPLv3 .
 // See LICENSE.txt for details.
 
 package machine
@@ -62,8 +62,8 @@ func TestProcessPacket_ValidChordPacket(t *testing.T) {
 
 	expected := []string{"T-", "K-", "A-", "O-", "-P", "-L", "-D"}
 
-	stroke := packet.toStroke()
-	if stroke == nil {
+	stroke, err := packet.toStroke()
+	if err != nil {
 		t.Fatalf("packet failed to parse")
 	}
 	if len(stroke) == 0 {

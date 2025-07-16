@@ -1,4 +1,4 @@
-# Gplover
+# sten - The Standard Stenography Engine
 
 
 # setup

@@ -1,8 +1,8 @@
 // Copyright (c) 2025 Garrett Jennings.
-// This File is part of gplover. Gplover is free software under GPLv3 .
+// This File is part of sten. Sten is free software under GPLv3 .
 // See LICENSE.txt for details.
 
-module gplover
+module sten
 
 go 1.24.4
 

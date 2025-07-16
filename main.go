@@ -1,5 +1,5 @@
 // Copyright (c) 2025 Garrett Jennings.
-// This File is part of gplover. Gplover is free software under GPLv3 .
+// This File is part of sten. Sten is free software under GPLv3 .
 // See LICENSE.txt for details.
 
 package main
@@ -11,13 +11,13 @@ import (
 	"os/signal"
 	"syscall"
 
-	"gplover/config"
-	"gplover/dictionary"
-	"gplover/engine"
-	"gplover/machine"
-	"gplover/output"
-	"gplover/stroke"
-	"gplover/translator"
+	"sten/config"
+	"sten/dictionary"
+	"sten/engine"
+	"sten/machine"
+	"sten/output"
+	"sten/stroke"
+	"sten/translator"
 )
 
 func main() {
@@ -55,11 +55,11 @@ func main() {
 	}
 	defer gemini.StopCapture()
 
-	fmt.Println("Gplover now running. Press Ctrl+C to quit.")
+	fmt.Println("[sten] is running. Press Ctrl+C to quit.")
 
 	// Handle Ctrl+C
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT)
 	<-sigs
-	fmt.Println("\n[gplover] Quit with Ctrl+C")
+	fmt.Println("\n[sten] Quit with Ctrl+C")
 }
