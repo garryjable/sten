@@ -12,10 +12,20 @@ import (
 	"strings"
 )
 
-type Dictionary map[string]string
+// Dictionary is the interface Translator depends on.
+type Dict interface {
+	Lookup(outline string) (string, bool)
+}
 
-func LoadDictionaries(folder string) (map[string]string, int, error) {
-	combined := make(map[string]string)
+type Dictionary struct {
+	entries map[string]string
+}
+
+func LoadDictionaries(folder string) (Dict, int, error) {
+	entries := make(map[string]string)
+	combined := &Dictionary{
+		entries: entries,
+	}
 	longestOutline := 0
 
 	files, err := os.ReadDir(folder)
@@ -43,7 +53,7 @@ func LoadDictionaries(folder string) (map[string]string, int, error) {
 		}
 
 		for k, v := range dict {
-			combined[k] = v
+			combined.entries[k] = v
 
 			// Count strokes: number of slashes + 1
 			count := strings.Count(k, "/") + 1
@@ -53,12 +63,12 @@ func LoadDictionaries(folder string) (map[string]string, int, error) {
 		}
 	}
 
-	fmt.Printf("Loaded %d entries across dictionaries. Max outline length: %d strokes.\n", len(combined), longestOutline)
+	fmt.Printf("Loaded %d entries across dictionaries. Max outline length: %d strokes.\n", len(combined.entries), longestOutline)
 
 	return combined, longestOutline, nil
 }
 
-func (d Dictionary) Lookup(stroke string) (string, bool) {
-	result, ok := d[stroke]
+func (d *Dictionary) Lookup(stroke string) (string, bool) {
+	result, ok := d.entries[stroke]
 	return result, ok
 }

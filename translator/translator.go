@@ -1,4 +1,4 @@
-// Copyright (c) 2025 Garrett Jennings.
+// Copyright (c) 2025 Garrett result.
 // This File is part of sten. Sten is free software under GPLv3 .
 // See LICENSE.txt for details.
 
@@ -12,108 +12,125 @@ import (
 type State []Translation
 
 type Translation struct {
-	entry    string
-	outline  string
-	prev     *Translation
-	replaced *Translation
+	result    string
+	stroke    string
+	prev      *Translation // previous
+	multiPrev *Translation // for multistroke translations
 }
 
 // Translator is the main engine for converting strokes to translations.
 type Translator struct {
-	dict   dictionary.Dictionary
-	latest *Translation
-	// UndoBuffer     []Translation
-	// Listeners      []func([]Translation, []Translation, *Translation)
-	// MaxHistory    int
+	dict          dictionary.Dict
+	latest        *Translation
 	maxOutlineLen int
 }
 
-func newCommand(entry string, outline string) *Translation {
+func newCommand(result string, stroke string) *Translation {
 	return &Translation{
-		entry:    entry,
-		outline:  outline,
-		prev:     nil,
-		replaced: nil,
+		result:    result,
+		stroke:    stroke,
+		prev:      nil,
+		multiPrev: nil,
 	}
 }
 
-func newWord(entry string, outline string, prev *Translation, latest *Translation) *Translation {
+func newWord(result string, stroke string, prev *Translation) *Translation {
 	return &Translation{
-		entry:    entry,
-		outline:  outline,
-		prev:     prev,
-		replaced: latest,
+		result:    result,
+		stroke:    stroke,
+		prev:      prev,
+		multiPrev: nil,
 	}
 }
 
-func newBlank(outline string, prev *Translation) *Translation {
+func newMultiWord(result string, stroke string, prev *Translation, multiPrev *Translation) *Translation {
 	return &Translation{
-		entry:    "",
-		outline:  outline,
-		prev:     prev,
-		replaced: nil,
+		result:    result,
+		stroke:    stroke,
+		prev:      prev,
+		multiPrev: multiPrev,
+	}
+}
+
+func newUntranslatable(stroke string, prev *Translation) *Translation {
+	return &Translation{
+		result:    "",
+		stroke:    stroke,
+		prev:      prev,
+		multiPrev: nil,
 	}
 }
 
 // NewTranslator creates a new Translator instance.
-func NewTranslator(dict dictionary.Dictionary, maxOutlineLen int) *Translator {
+func NewTranslator(dict dictionary.Dict, maxOutlineLen int) *Translator {
 	return &Translator{
 		dict: dict,
 		latest: &Translation{
-			entry:    "",
-			outline:  "",
-			prev:     nil,
-			replaced: nil,
+			result:    "",
+			stroke:    "",
+			prev:      nil,
+			multiPrev: nil,
 		},
-		// MaxHistory:    maxHistory, // Probably shouldn't let history grow forever
 		maxOutlineLen: maxOutlineLen,
 	}
 }
 
-func (tr *Translator) Translate(outline string) *Translation {
-	translation := newBlank(outline, tr.latest)
-	latest := tr.getLatest(outline, translation, 0)
-	if !latest.isCommand() {
-		tr.latest = latest
+func (tr *Translation) PrintHistory() {
+	if tr.prev != nil {
+		tr.prev.PrintHistory()
 	}
+}
+
+func (tr *Translator) Translate(stroke string) *Translation {
+	//translation := newBlank(stroke, tr.latest)
+	latest := tr.getLatest(stroke, stroke, tr.latest, 1)
+	tr.appendHistory(latest)
 	return latest
 }
 
-func (tr *Translator) getLatest(outline string, node *Translation, depth int) *Translation {
-	if depth < tr.maxOutlineLen {
-		if node.prev != nil {
-			latest := tr.getLatest(node.outline+"/"+outline, node.prev, depth+1)
+func (tr *Translator) getLatest(stroke string, outline string, prev *Translation, strokeCount int) *Translation {
+	if strokeCount <= tr.maxOutlineLen {
+		if prev.prev != nil {
+			latest := tr.getLatest(stroke, prev.stroke+"/"+outline, prev.prev, strokeCount+1)
 			if latest != nil {
-				return latest // return the longest match possible
+				return latest // return the longest possible match
 			}
 		}
-		if entry, ok := tr.dict.Lookup(outline); ok {
-			if strings.HasPrefix(entry, "=") {
-				return newCommand(entry, outline)
+		if result, ok := tr.dict.Lookup(outline); ok {
+			if strings.HasPrefix(result, "=") {
+				return newCommand(result, stroke)
+			} else if strokeCount == 1 {
+				return newWord(result, stroke, tr.latest)
 			} else {
-				return newWord(entry, outline, node.prev, tr.latest)
+				return newMultiWord(result, stroke, tr.latest, prev)
 			}
-		} else if depth == 0 {
-			return node // return blank translation
+		} else if strokeCount == 1 {
+			return newUntranslatable(stroke, tr.latest)
 		}
 	}
 	return nil // dont seek longer than possible matches
 }
 
 func (t *Translation) Text() string {
-	if t.entry != "" {
-		return t.entry
+	if t.result != "" {
+		return t.result
 	} else {
-		return t.outline
+		return t.stroke
 	}
 
 }
 
 func (t *Translation) isCommand() bool {
-	if strings.HasPrefix(t.entry, "=") {
+	if strings.HasPrefix(t.result, "=") {
 		return true
 	} else {
 		return false
 	}
 
+}
+
+func (tr *Translator) appendHistory(latest *Translation) {
+	if !latest.isCommand() {
+		tr.latest = latest
+	}
 }
