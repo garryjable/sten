@@ -16,6 +16,11 @@ import (
 	"github.com/tarm/serial"
 )
 
+type SerialPort interface {
+	Read(p []byte) (int, error)
+	Close() error
+}
+
 // Standard stenotype interface for a Gemini PR machine.
 //
 //     KEYS_LAYOUT =
@@ -55,7 +60,7 @@ type GeminiPrMachine struct {
 	portName string
 	baudRate int
 	callback StrokeCallback
-	port     *serial.Port
+	port     SerialPort
 	stopping chan struct{} //
 	stopped  chan struct{}
 }
@@ -77,17 +82,18 @@ func NewGeminiPrMachine(portName string, baudRate int, cb StrokeCallback) *Gemin
 
 // StartCapture opens the serial port and starts reading strokes.
 func (m *GeminiPrMachine) StartCapture() error {
-	c := &serial.Config{
-		Name:        m.portName,
-		Baud:        m.baudRate,
-		ReadTimeout: time.Second * 2,
+	if m.port == nil {
+		c := &serial.Config{
+			Name:        m.portName,
+			Baud:        m.baudRate,
+			ReadTimeout: time.Second * 2,
+		}
+		port, err := serial.OpenPort(c)
+		if err != nil {
+			return fmt.Errorf("failed to open serial port: %w", err)
+		}
+		m.port = port
 	}
-
-	port, err := serial.OpenPort(c)
-	if err != nil {
-		return fmt.Errorf("failed to open serial port: %w", err)
-	}
-	m.port = port
 
 	go m.readLoop()
 	return nil

@@ -55,7 +55,7 @@ func main() {
 	}
 	defer gemini.StopCapture()
 
-	fmt.Println("[sten] is running. Press Ctrl+C to quit.")
+	fmt.Println("[sten] Running. Press Ctrl+C to quit.")
 
 	// Handle Ctrl+C
 	sigs := make(chan os.Signal, 1)

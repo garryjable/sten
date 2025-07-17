@@ -1,7 +1,6 @@
 // Copyright (c) 2025 Garrett Jennings.
 // This File is part of sten. Sten is free software under GPLv3 .
 // See LICENSE.txt for details.
-
 package dictionary
 
 import (
@@ -19,12 +18,12 @@ func LoadDictionaries(folder string) (map[string]string, int, error) {
 	combined := make(map[string]string)
 	longestOutline := 0
 
-	entries, err := os.ReadDir(folder)
+	files, err := os.ReadDir(folder)
 	if err != nil {
 		return nil, longestOutline, fmt.Errorf("read dir: %w", err)
 	}
 
-	for _, entry := range entries {
+	for _, entry := range files {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
 			continue
 		}

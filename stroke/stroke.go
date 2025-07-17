@@ -11,6 +11,8 @@ import (
 
 type Stroke []string
 
+// type Stroke uint32
+
 func (s *Stroke) Steno() string {
 	var parts []string
 	for _, key := range *s {
