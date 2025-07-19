@@ -39,7 +39,7 @@ func (e *Engine) Run(machine machine.Machine) {
 	// Start a goroutine to feed strokes into translator
 	go func() {
 		for stroke := range machine.Strokes() {
-			e.translator.Recieve(stroke.Steno())
+			e.translator.Translate(stroke.Steno())
 		}
 		e.translator.Close() // Close when machine input is done
 	}()

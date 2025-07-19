@@ -133,7 +133,7 @@ func (tr *Translator) appendHistory(latest *Translation) {
 }
 
 // For engine to send strokes:
-func (t *Translator) Recieve(stroke string) {
+func (t *Translator) Translate(stroke string) {
 	t.in <- stroke
 }
 

@@ -120,7 +120,7 @@ func TestProcessPacket_InvalidOtherByte(t *testing.T) {
 }
 
 func TestStartStopCapture(t *testing.T) {
-	m := NewGeminiPrMachine("/dev/null", 9600, nil)
+	m := NewGeminiPrMachine("/dev/null", 9600)
 	err := m.StartCapture()
 	if err == nil {
 		t.Error("expected failure on opening /dev/null as serial port")
@@ -128,15 +128,12 @@ func TestStartStopCapture(t *testing.T) {
 }
 
 func TestNewGeminiPrMachineDefaults(t *testing.T) {
-	m := NewGeminiPrMachine("test", 1234, nil)
+	m := NewGeminiPrMachine("test", 1234)
 	if m == nil {
 		t.Fatal("expected machine instance, got nil")
 	}
 	if m.baudRate != 1234 || m.portName != "test" {
 		t.Errorf("unexpected config: %+v", m)
-	}
-	if m.callback != nil {
-		t.Errorf("expected nil callback")
 	}
 }
 
@@ -145,7 +142,7 @@ func TestReadLoopStops(t *testing.T) {
 		readDelay: 0,
 		error:     nil,
 	}
-	m := NewGeminiPrMachine("", 0, nil)
+	m := NewGeminiPrMachine("", 0)
 	m.port = mockPort
 
 	m.StartCapture()
