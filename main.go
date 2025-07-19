@@ -16,7 +16,6 @@ import (
 	"sten/engine"
 	"sten/machine"
 	"sten/output"
-	"sten/stroke"
 	"sten/translator"
 )
 
@@ -33,27 +32,22 @@ func main() {
 	}
 
 	// Create virtual Output
-	out, err := output.NewVirtualOutput()
-	if err != nil {
-		log.Fatalf("Failed to init virtual keyboard: %v", err)
-	}
+	out := output.NewDevOutputService()
 
-	e := engine.NewEngine(out)
+	engine := engine.NewEngine(out)
 
-	t := translator.NewTranslator(dict, longestOutline)
+	translator := translator.NewTranslator(dict, longestOutline)
 
-	gemini := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud, func(stroke *stroke.Stroke) {
-		// word := t.translate(stroke)
-		translation := t.Translate(stroke.Steno())
-		e.Execute(translation)
+	machine := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud)
 
-	})
+	go engine.Run(machine, translator)
+
 	// Start machine capture
-	err = gemini.StartCapture()
+	err = machine.StartCapture()
 	if err != nil {
 		log.Fatalf("Failed to start Gemini PR machine: %v", err)
 	}
-	defer gemini.StopCapture()
+	defer machine.StopCapture()
 
 	fmt.Println("[sten] Running. Press Ctrl+C to quit.")
 

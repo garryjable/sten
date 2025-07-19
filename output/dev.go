@@ -1,25 +1,43 @@
-// output/dev.go
-//go:build !prod
-// +build !prod
+// Copyright (c) 2025 Garrett Jennings.
+// This File is part of sten. Sten is free software under GPLv3 .
+// See LICENSE.txt for details.
 
 package output
 
 import (
-	"fmt"
-
 	"github.com/go-vgo/robotgo"
 )
 
-type DevOutput struct{}
-
-func NewVirtualOutput() (*DevOutput, error) {
-	if !robotgo.IsValid() {
-		return nil, fmt.Errorf("robotgo initialization failed")
-	}
-	return &DevOutput{}, nil
+type DevOutputService struct {
+	cmds chan OutputCommand
 }
 
-// TypeString types a full Unicode string
-func (d *DevOutput) Type(s string) {
-	robotgo.TypeStr(s + " ")
+func NewDevOutputService() *DevOutputService {
+	s := &DevOutputService{
+		cmds: make(chan OutputCommand, 32), // Buffered channel for performance
+	}
+	go s.loop()
+	return s
+
+}
+
+func (out *DevOutputService) loop() {
+	for cmd := range out.cmds {
+		switch cmd.Type {
+		case TypeCommand:
+			robotgo.TypeStr(cmd.Text + " ")
+		case UndoCommand:
+			for range []rune(cmd.Text + " ") {
+				robotgo.KeyTap("backspace")
+			}
+		}
+	}
+}
+
+func (s *DevOutputService) Type(text string) {
+	s.cmds <- OutputCommand{Type: TypeCommand, Text: text}
+}
+
+func (s *DevOutputService) Undo(text string) {
+	s.cmds <- OutputCommand{Type: UndoCommand, Text: text}
 }

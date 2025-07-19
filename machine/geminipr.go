@@ -57,26 +57,18 @@ type StrokeCallback func(*stroke.Stroke)
 
 // GeminiPrMachine represents a Gemini PR stenotype machine.
 type GeminiPrMachine struct {
-	portName string
-	baudRate int
-	callback StrokeCallback
-	port     SerialPort
-	stopping chan struct{} //
-	stopped  chan struct{}
-}
-
-func (m *GeminiPrMachine) SetCallback(cb StrokeCallback) {
-	m.callback = cb
+	portName   string
+	baudRate   int
+	port       SerialPort
+	strokeChan chan *stroke.Stroke
 }
 
 // NewGeminiPrMachine creates a new Gemini PR machine instance.
-func NewGeminiPrMachine(portName string, baudRate int, cb StrokeCallback) *GeminiPrMachine {
+func NewGeminiPrMachine(portName string, baudRate int) *GeminiPrMachine {
 	return &GeminiPrMachine{
-		portName: portName,
-		baudRate: baudRate,
-		callback: cb,
-		stopping: make(chan struct{}),
-		stopped:  make(chan struct{}),
+		portName:   portName,
+		baudRate:   baudRate,
+		strokeChan: make(chan *stroke.Stroke, 64),
 	}
 }
 
@@ -94,15 +86,12 @@ func (m *GeminiPrMachine) StartCapture() error {
 		}
 		m.port = port
 	}
-
 	go m.readLoop()
 	return nil
 }
 
 // StopCapture stops reading and closes the serial port.
 func (m *GeminiPrMachine) StopCapture() {
-	close(m.stopping)
-	<-m.stopped
 	if m.port != nil {
 		m.port.Close()
 		m.port = nil
@@ -111,33 +100,28 @@ func (m *GeminiPrMachine) StopCapture() {
 
 // reads packets and sends output via the callback
 func (m *GeminiPrMachine) readLoop() {
-	defer close(m.stopped)
+	defer close(m.strokeChan)
 
 	packet := StrokePacket{}
-
 	for {
-		select {
-		case <-m.stopping:
-			return
-		default:
-			_, err := m.port.Read(packet[:])
-			if err != nil {
-				// Only print unexpected errors
-				if errors.Is(err, os.ErrDeadlineExceeded) || err == io.EOF {
-					continue
-				}
-				log.Printf("serial read error: %v", err)
+		_, err := m.port.Read(packet[:])
+		if err != nil {
+			// Only print unexpected errors
+			if errors.Is(err, os.ErrDeadlineExceeded) || err == io.EOF {
+				continue
 			}
-			stroke, err := packet.toStroke()
-			if err == nil {
-				m.callback(stroke)
-			}
+			log.Printf("serial read error: %v", err)
+			break
+		}
+		stroke, err := packet.toStroke()
+		if err == nil {
+			m.strokeChan <- stroke
 		}
 	}
 }
 
 // toStroke decodes a Gemini PR packet into a chord of key presses
-func (packet StrokePacket) toStroke() (*stroke.Stroke, error) {
+func (packet *StrokePacket) toStroke() (*stroke.Stroke, error) {
 	if !packet.isValid() {
 		return &stroke.Stroke{}, errors.New("Invalid Stroke Packet")
 	}
@@ -164,4 +148,8 @@ func (p StrokePacket) isValid() bool {
 		}
 	}
 	return true
+}
+
+func (m *GeminiPrMachine) Strokes() <-chan *stroke.Stroke {
+	return m.strokeChan
 }

@@ -6,4 +6,17 @@ package output
 
 type Output interface {
 	Type(text string)
+	Undo(text string)
+}
+
+type CommandType int
+
+const (
+	TypeCommand CommandType = iota
+	UndoCommand
+)
+
+type OutputCommand struct {
+	Type CommandType
+	Text string
 }

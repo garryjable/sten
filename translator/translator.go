@@ -9,8 +9,6 @@ import (
 	"strings"
 )
 
-type State []Translation
-
 type Translation struct {
 	result    string
 	stroke    string

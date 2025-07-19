@@ -4,8 +4,10 @@
 
 package machine
 
+import "sten/stroke"
+
 type Machine interface {
 	StartCapture() error
 	StopCapture()
-	SetCallback(cb StrokeCallback)
+	Strokes() <-chan *stroke.Stroke
 }
