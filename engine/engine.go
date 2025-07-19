@@ -5,6 +5,8 @@
 package engine
 
 import (
+	"log"
+	"sten/dictionary"
 	"sten/machine"
 	"sten/output"
 	"sten/translator"
@@ -15,16 +17,27 @@ type Engine struct {
 	translator *translator.Translator
 }
 
-func NewEngine(output output.Output) *Engine {
+func NewEngine() *Engine {
+	// Load your dictionary
+	dict, longestOutline, err := dictionary.LoadDictionaries("dictionaries")
+	if err != nil {
+		log.Fatalf("Error loading dictionary: %v", err)
+	}
+
+	// Create virtual Output
+	output := output.NewDevOutputService()
+	translator := translator.NewTranslator(dict, longestOutline)
+
 	e := &Engine{
-		output: output,
+		output:     output,
+		translator: translator,
 	}
 	return e
 }
 
-func (e *Engine) Run(machine machine.Machine, translator *translator.Translator) {
+func (e *Engine) Run(machine machine.Machine) {
 	for stroke := range machine.Strokes() {
-		translation := translator.Translate(stroke.Steno())
+		translation := e.translator.Translate(stroke.Steno())
 		e.Execute(translation)
 	}
 }
