@@ -36,8 +36,16 @@ func NewEngine() *Engine {
 }
 
 func (e *Engine) Run(machine machine.Machine) {
-	for stroke := range machine.Strokes() {
-		translation := e.translator.Translate(stroke.Steno())
+	// Start a goroutine to feed strokes into translator
+	go func() {
+		for stroke := range machine.Strokes() {
+			e.translator.Recieve(stroke.Steno())
+		}
+		e.translator.Close() // Close when machine input is done
+	}()
+
+	// Main loop: read translation outputs and handle them
+	for translation := range e.translator.Out() {
 		e.Execute(translation)
 	}
 }

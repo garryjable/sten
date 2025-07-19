@@ -21,6 +21,8 @@ type Translator struct {
 	dict          dictionary.Dict
 	latest        *Translation
 	maxOutlineLen int
+	in            chan string
+	out           chan *Translation
 }
 
 func newCommand(result string, stroke string) *Translation {
@@ -61,7 +63,7 @@ func newUntranslatable(stroke string, prev *Translation) *Translation {
 
 // NewTranslator creates a new Translator instance.
 func NewTranslator(dict dictionary.Dict, maxOutlineLen int) *Translator {
-	return &Translator{
+	t := &Translator{
 		dict: dict,
 		latest: &Translation{
 			result:    "",
@@ -70,20 +72,17 @@ func NewTranslator(dict dictionary.Dict, maxOutlineLen int) *Translator {
 			multiPrev: nil,
 		},
 		maxOutlineLen: maxOutlineLen,
+		in:            make(chan string, 16),
+		out:           make(chan *Translation, 16),
 	}
+	go t.run()
+	return t
 }
 
 func (tr *Translation) PrintHistory() {
 	if tr.prev != nil {
 		tr.prev.PrintHistory()
 	}
-}
-
-func (tr *Translator) Translate(stroke string) *Translation {
-	//translation := newBlank(stroke, tr.latest)
-	latest := tr.getLatest(stroke, stroke, tr.latest, 1)
-	tr.appendHistory(latest)
-	return latest
 }
 
 func (tr *Translator) getLatest(stroke string, outline string, prev *Translation, strokeCount int) *Translation {
@@ -131,4 +130,27 @@ func (tr *Translator) appendHistory(latest *Translation) {
 	if !latest.isCommand() {
 		tr.latest = latest
 	}
+}
+
+// For engine to send strokes:
+func (t *Translator) Recieve(stroke string) {
+	t.in <- stroke
+}
+
+// For closing (when done, eg: engine detects machine done)
+func (t *Translator) Close() {
+	close(t.in)
+}
+
+func (t *Translator) Out() <-chan *Translation {
+	return t.out
+}
+
+func (t *Translator) run() {
+	for stroke := range t.in {
+		latest := t.getLatest(stroke, stroke, t.latest, 1)
+		t.appendHistory(latest)
+		t.out <- latest
+	}
+	close(t.out)
 }

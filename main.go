@@ -12,11 +12,8 @@ import (
 	"syscall"
 
 	"sten/config"
-	"sten/dictionary"
 	"sten/engine"
 	"sten/machine"
-	"sten/output"
-	"sten/translator"
 )
 
 func main() {
@@ -25,22 +22,11 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	// Load your dictionary
-	dict, longestOutline, err := dictionary.LoadDictionaries("dictionaries")
-	if err != nil {
-		log.Fatalf("Error loading dictionary: %v", err)
-	}
-
-	// Create virtual Output
-	out := output.NewDevOutputService()
-
-	engine := engine.NewEngine(out)
-
-	translator := translator.NewTranslator(dict, longestOutline)
+	engine := engine.NewEngine()
 
 	machine := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud)
 
-	go engine.Run(machine, translator)
+	go engine.Run(machine)
 
 	// Start machine capture
 	err = machine.StartCapture()
