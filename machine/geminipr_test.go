@@ -97,8 +97,11 @@ func TestGeminiPacketEncoding(t *testing.T) {
 			t.Fatalf("packet failed to parse")
 		}
 		steno := stroke.Steno()
-		if len(steno) == 0 || steno != config.Layout[expected] {
-			t.Errorf("expected %v, got %v", expected, steno)
+		if len(steno) == 1 && steno != config.Layout[expected] { // no dashes
+			t.Errorf("expected %v, got %v", config.Layout[expected], steno)
+		}
+		if len(steno) == 2 && steno != expected { // with dashes
+			t.Errorf("expected %v, got %v", config.Layout[expected], steno)
 		}
 	}
 }

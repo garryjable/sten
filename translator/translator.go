@@ -6,12 +6,13 @@ package translator
 
 import (
 	"sten/dictionary"
+	"sten/stroke"
 	"strings"
 )
 
 type Translation struct {
 	result    string
-	stroke    string
+	stroke    stroke.Stroke
 	prev      *Translation // previous
 	multiPrev *Translation // for multistroke translations
 }
@@ -21,11 +22,11 @@ type Translator struct {
 	dict          dictionary.Dict
 	latest        *Translation
 	maxOutlineLen int
-	in            chan string
+	in            chan stroke.Stroke
 	out           chan *Translation
 }
 
-func newCommand(result string, stroke string) *Translation {
+func newCommand(result string, stroke stroke.Stroke) *Translation {
 	return &Translation{
 		result:    result,
 		stroke:    stroke,
@@ -34,7 +35,7 @@ func newCommand(result string, stroke string) *Translation {
 	}
 }
 
-func newWord(result string, stroke string, prev *Translation) *Translation {
+func newWord(result string, stroke stroke.Stroke, prev *Translation) *Translation {
 	return &Translation{
 		result:    result,
 		stroke:    stroke,
@@ -43,7 +44,7 @@ func newWord(result string, stroke string, prev *Translation) *Translation {
 	}
 }
 
-func newMultiWord(result string, stroke string, prev *Translation, multiPrev *Translation) *Translation {
+func newMultiWord(result string, stroke stroke.Stroke, prev *Translation, multiPrev *Translation) *Translation {
 	return &Translation{
 		result:    result,
 		stroke:    stroke,
@@ -52,7 +53,7 @@ func newMultiWord(result string, stroke string, prev *Translation, multiPrev *Tr
 	}
 }
 
-func newUntranslatable(stroke string, prev *Translation) *Translation {
+func newUntranslatable(stroke stroke.Stroke, prev *Translation) *Translation {
 	return &Translation{
 		result:    "",
 		stroke:    stroke,
@@ -67,12 +68,12 @@ func NewTranslator(dict dictionary.Dict, maxOutlineLen int) *Translator {
 		dict: dict,
 		latest: &Translation{
 			result:    "",
-			stroke:    "",
+			stroke:    0,
 			prev:      nil,
 			multiPrev: nil,
 		},
 		maxOutlineLen: maxOutlineLen,
-		in:            make(chan string, 16),
+		in:            make(chan stroke.Stroke, 16),
 		out:           make(chan *Translation, 16),
 	}
 	go t.run()
@@ -85,10 +86,10 @@ func (tr *Translation) PrintHistory() {
 	}
 }
 
-func (tr *Translator) getLatest(stroke string, outline string, prev *Translation, strokeCount int) *Translation {
+func (tr *Translator) getLatest(stroke stroke.Stroke, outline stroke.Outline, prev *Translation, strokeCount int) *Translation {
 	if strokeCount <= tr.maxOutlineLen {
 		if prev.prev != nil {
-			latest := tr.getLatest(stroke, prev.stroke+"/"+outline, prev.prev, strokeCount+1)
+			latest := tr.getLatest(prev.stroke, outline.Prepend(prev.stroke), prev.prev, strokeCount+1)
 			if latest != nil {
 				return latest // return the longest possible match
 			}
@@ -112,7 +113,7 @@ func (t *Translation) Text() string {
 	if t.result != "" {
 		return t.result
 	} else {
-		return t.stroke
+		return t.stroke.String()
 	}
 
 }
@@ -133,7 +134,7 @@ func (tr *Translator) appendHistory(latest *Translation) {
 }
 
 // For engine to send strokes:
-func (t *Translator) Translate(stroke string) {
+func (t *Translator) Translate(stroke stroke.Stroke) {
 	t.in <- stroke
 }
 
@@ -148,7 +149,7 @@ func (t *Translator) Out() <-chan *Translation {
 
 func (t *Translator) run() {
 	for stroke := range t.in {
-		latest := t.getLatest(stroke, stroke, t.latest, 1)
+		latest := t.getLatest(stroke, stroke.Outline(), t.latest, 1)
 		t.appendHistory(latest)
 		t.out <- latest
 	}

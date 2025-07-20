@@ -5,6 +5,8 @@
 package translator
 
 import (
+	"fmt"
+	"sten/stroke"
 	"testing"
 )
 
@@ -13,18 +15,18 @@ type MockDictionary struct {
 	entries map[string]string
 }
 
-func (m *MockDictionary) Lookup(outline string) (string, bool) {
-	val, ok := m.entries[outline]
+func (m *MockDictionary) Lookup(outline fmt.Stringer) (string, bool) {
+	val, ok := m.entries[outline.String()]
 	return val, ok
 }
 
 func TestSingleWordTranslation(t *testing.T) {
 	dict := &MockDictionary{entries: map[string]string{
-		"STROKE": "hello",
+		"STPH": "hello",
 	}}
 	tr := NewTranslator(dict, 1)
 
-	tr.Translate("STROKE")
+	tr.Translate(stroke.ParseSteno("STPH"))
 	result := <-tr.Out()
 
 	if result.Text() != "hello" {
@@ -38,7 +40,7 @@ func TestCommandTranslation(t *testing.T) {
 	}}
 	tr := NewTranslator(dict, 1)
 
-	tr.Translate("*")
+	tr.Translate(stroke.ParseSteno("*"))
 	result := <-tr.Out()
 
 	if !result.isCommand() {
@@ -51,74 +53,75 @@ func TestCommandTranslation(t *testing.T) {
 
 func TestBlankFallback(t *testing.T) {
 	dict := &MockDictionary{entries: map[string]string{
-		"KNOWN":             "known",
-		"KNOWN/KNOWN":       "known",
-		"KNOWN/KNOWN/KNOWN": "known",
+		"TPHOPB":               "known",
+		"TPHOPB/TPHOPB":        "known",
+		"TPHOPB/TPHOPB/TPHOPB": "known",
 	}}
 	tr := NewTranslator(dict, 3)
 
-	tr.Translate("UNKNOWN")
+	unknown := "TPHO"
+	tr.Translate(stroke.ParseSteno(unknown))
 	result := <-tr.Out()
 
-	if result.Text() != "UNKNOWN" {
-		t.Errorf("Expected fallback to 'UNKNOWN', got '%s'", result.Text())
+	if result.Text() != unknown {
+		t.Errorf("Expected fallback to raw, got '%s'", result.Text())
 	}
 }
 
 func TestMultiStrokeTranslation(t *testing.T) {
 	dict := &MockDictionary{entries: map[string]string{
-		"U":                            "you",
-		"R":                            "are",
-		"EUPB":                         "in",
-		"TE":                           "the",
-		"EUPB/TE/HREB/TWAL":            "intellectual",
-		"EUPB/TE/HREB/TWAL/MAXOUTLINE": "Not Reachable",
+		"U":                      "you",
+		"R":                      "are",
+		"EUPB":                   "in",
+		"TE":                     "the",
+		"EUPB/TE/HREB/TWAL":      "intellectual",
+		"EUPB/TE/HREB/TWAL/TWAL": "Not Reachable",
 	}}
 	tr := NewTranslator(dict, 4)
 
-	tr.Translate("U")
+	tr.Translate(stroke.ParseSteno("U"))
 	<-tr.Out()
-	tr.Translate("R")
+	tr.Translate(stroke.ParseSteno("R"))
 	<-tr.Out()
-	tr.Translate("EUPB")
+	tr.Translate(stroke.ParseSteno("EUPB"))
 	<-tr.Out()
-	tr.Translate("TE")
+	tr.Translate(stroke.ParseSteno("TE"))
 	<-tr.Out()
-	tr.Translate("HREB")
+	tr.Translate(stroke.ParseSteno("HREB"))
 	<-tr.Out()
-	tr.Translate("TWAL")
+	tr.Translate(stroke.ParseSteno("TWAL"))
 	result := <-tr.Out()
 
 	if result.Text() != "intellectual" {
 		t.Errorf("Expected 'intellectual' from multi-stroke, got '%s'", result.Text())
 	}
 
-	tr.Translate("MAXOUTLINE")
+	tr.Translate(stroke.ParseSteno("TWAL"))
 	result = <-tr.Out()
-	if result.Text() != "MAXOUTLINE" {
-		t.Errorf("Expected 'MAXOUTLINE' from exceed max stroke length, got '%s'", result.Text())
+	if result.Text() != "TWAL" {
+		t.Errorf("Expected 'TWAL' from exceed max stroke length, got '%s'", result.Text())
 	}
 }
 
 func TestCommandDoesNotUpdateLatest(t *testing.T) {
 	dict := &MockDictionary{entries: map[string]string{
-		"ONE": "1",
-		"CMD": "=do",
-		"TWO": "2",
+		"WOPB": "1",
+		"*":    "=undo",
+		"TWO":  "2",
 	}}
 	tr := NewTranslator(dict, 1)
 
-	tr.Translate("ONE")
+	tr.Translate(stroke.ParseSteno("WOPB"))
 	<-tr.Out()
-	tr.Translate("CMD") // should not change latest
+	tr.Translate(stroke.ParseSteno("*")) // should not change latest
 	<-tr.Out()
-	tr.Translate("TWO")
+	tr.Translate(stroke.ParseSteno("TWO"))
 	result := <-tr.Out()
 
 	if result.Text() != "2" {
 		t.Errorf("Expected '2', got '%s'", result.Text())
 	}
 	if result.prev == nil || result.prev.Text() != "1" {
-		t.Errorf("Expected previous translation to be '1', got '%v'", result.prev)
+		t.Errorf("Expected previous translation to be '1', got '%v'", result.prev.Text())
 	}
 }

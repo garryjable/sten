@@ -14,7 +14,7 @@ import (
 
 // Dictionary is the interface Translator depends on.
 type Dict interface {
-	Lookup(outline string) (string, bool)
+	Lookup(outline fmt.Stringer) (string, bool)
 }
 
 type Dictionary struct {
@@ -68,7 +68,7 @@ func LoadDictionaries(folder string) (Dict, int, error) {
 	return combined, longestOutline, nil
 }
 
-func (d *Dictionary) Lookup(stroke string) (string, bool) {
-	result, ok := d.entries[stroke]
+func (d *Dictionary) Lookup(outline fmt.Stringer) (string, bool) {
+	result, ok := d.entries[outline.String()]
 	return result, ok
 }

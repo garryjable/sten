@@ -9,5 +9,5 @@ import "sten/stroke"
 type Machine interface {
 	StartCapture() error
 	StopCapture()
-	Strokes() <-chan *stroke.Stroke
+	Strokes() <-chan stroke.Stroke
 }

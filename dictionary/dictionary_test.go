@@ -7,6 +7,7 @@ package dictionary
 import (
 	"os"
 	"path/filepath"
+	"sten/stroke"
 	"testing"
 )
 
@@ -65,7 +66,7 @@ func TestLoadDictionary(t *testing.T) {
 		t.Errorf("expected %q, counted %q", 5, maxOutline)
 	}
 
-	got, _ := dict.Lookup("STKPWHRAEU")
+	got, _ := dict.Lookup(stroke.ParseSteno("STKPWHRAEU"))
 	want := "display"
 	if got != want {
 		t.Errorf("expected %q, got %q", want, got)

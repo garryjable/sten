@@ -16,12 +16,28 @@ func TestStrokeTranslation(t *testing.T) {
 		"T-":  "T",
 		"K-":  "K",
 		"-E":  "E",
+		"-S":  "S",
 	}
 
-	s := &Stroke{"S1-", "T-", "K-", "-E"}
+	s := ParseSteno("STKES")
 	got := s.Steno()
-	want := "STKE"
+	want := "STKES"
 	if got != want {
 		t.Errorf("expected %q, got %q", want, got)
 	}
+
+	s = ParseSteno("ES")
+	got = s.Steno()
+	want = "ES"
+	if got != want {
+		t.Errorf("expected %q, got %q", want, got)
+	}
+
+	s = ParseSteno("-S")
+	got = s.Steno()
+	want = "-S"
+	if got != want {
+		t.Errorf("expected %q, got %q", want, got)
+	}
+
 }
