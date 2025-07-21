@@ -11,7 +11,6 @@ import (
 	"log"
 	"os"
 	"sten/stroke"
-	"strings"
 	"time"
 
 	"github.com/tarm/serial"
@@ -53,20 +52,20 @@ var keyChart = GeminiBoard{
 	{"#7", "#8", "#9", "#A", "#B", "#C", "-Z"},
 }
 
-// geminiKeyToStenoKey maps Gemini protocol names to standard steno key names (as you want them to appear in steno strings).
-var geminiKeyToStenoKey = map[string]string{
-	"#1":  "#",
-	"#2":  "#",
-	"#3":  "#",
-	"#4":  "#",
-	"#5":  "#",
-	"#6":  "#",
-	"#7":  "#",
-	"#8":  "#",
-	"#9":  "#",
-	"#A":  "#",
-	"#B":  "#",
-	"#C":  "#",
+// Can Be overridden to customize layouts
+var GeminiDefaults = map[string]string{
+	"#1":  "#-",
+	"#2":  "#-",
+	"#3":  "#-",
+	"#4":  "#-",
+	"#5":  "#-",
+	"#6":  "#-",
+	"#7":  "#-",
+	"#8":  "#-",
+	"#9":  "#-",
+	"#A":  "#-",
+	"#B":  "#-",
+	"#C":  "#-",
 	"S1-": "S-",
 	"S2-": "S-",
 	"T-":  "T-",
@@ -75,14 +74,14 @@ var geminiKeyToStenoKey = map[string]string{
 	"W-":  "W-",
 	"H-":  "H-",
 	"R-":  "R-",
-	"A-":  "A-",
-	"O-":  "O-",
+	"A-":  "A",
+	"O-":  "O",
 	"*1":  "*",
 	"*2":  "*",
 	"*3":  "*",
 	"*4":  "*",
-	"-E":  "-E",
-	"-U":  "-U",
+	"-E":  "E",
+	"-U":  "U",
 	"-F":  "-F",
 	"-R":  "-R",
 	"-P":  "-P",
@@ -161,27 +160,6 @@ func (m *GeminiPrMachine) readLoop() {
 	}
 }
 
-func (packet *StrokePacket) toStroke() (stroke.Stroke, error) {
-	if !packet.isValid() {
-		return 0, errors.New("Invalid Stroke Packet")
-	}
-	var keys []string
-	for row, b := range packet {
-		for bit := 1; bit <= 7; bit++ {
-			mask := byte(0x80 >> bit)
-			if b&mask != 0 {
-				if geminiKey, ok := geminiKeyToStenoKey[keyChart[row][bit-1]]; ok {
-					keys = append(keys, geminiKey)
-				}
-			}
-		}
-	}
-	// Now keys is something like []{"S-", "T-", "K-", "W-", ...}
-	// Let's convert this directly to your Stroke (bitfield).
-	stenoKeys := GeminiKeysToSteno(keys)
-	return stroke.ParseSteno(stenoKeys), nil
-}
-
 // Validate packet: first byte MSB must be 1, others must be 0
 func (p StrokePacket) isValid() bool {
 	if p[0]&0x80 == 0 {
@@ -199,49 +177,21 @@ func (m *GeminiPrMachine) Strokes() <-chan stroke.Stroke {
 	return m.strokeChan
 }
 
-// Converts a slice of Gemini key names (e.g., T-, W-, A-, -L) to a canonical steno string (TWAL, etc).
-func GeminiKeysToSteno(keys []string) string {
-
-	left := []string{"S-", "T-", "K-", "P-", "W-", "H-", "R-"}
-	vowels := []string{"A-", "O-", "*", "-E", "-U"}
-	right := []string{"-F", "-R", "-P", "-B", "-L", "-G", "-T", "-S", "-D", "-Z"}
-
-	var leftPart, vowelPart, rightPart []string
-	keySet := make(map[string]struct{}, len(keys))
-	for _, k := range keys {
-		keySet[k] = struct{}{}
+func (packet *StrokePacket) toStroke() (stroke.Stroke, error) {
+	if !packet.isValid() {
+		return 0, errors.New("Invalid Stroke Packet")
 	}
-	for _, k := range left {
-		if _, ok := keySet[k]; ok {
-			leftPart = append(leftPart, strings.TrimSuffix(k, "-"))
-		}
-	}
-	for _, k := range vowels {
-		if _, ok := keySet[k]; ok {
-			if k == "*" {
-				vowelPart = append(vowelPart, "*")
-			} else {
-				vowelPart = append(vowelPart, strings.TrimSuffix(strings.TrimPrefix(k, "-"), "-"))
+	var keys []string
+	for row, b := range packet {
+		for bit := 1; bit <= 7; bit++ {
+			mask := byte(0x80 >> bit)
+			if b&mask != 0 {
+				if key, ok := GeminiDefaults[keyChart[row][bit-1]]; ok {
+					keys = append(keys, key)
+				}
 			}
 		}
 	}
-	for _, k := range right {
-		if _, ok := keySet[k]; ok {
-			rightPart = append(rightPart, strings.TrimPrefix(k, "-"))
-		}
-	}
-
-	leftStr := strings.Join(leftPart, "")
-	vowelStr := strings.Join(vowelPart, "")
-	rightStr := strings.Join(rightPart, "")
-
-	// --- Insert hyphen logic ---
-	switch {
-	case vowelStr == "" && rightStr != "" && leftStr != "":
-		return leftStr + "-" + rightStr
-	case leftStr == "" && rightStr != "":
-		return "-" + rightStr
-	default:
-		return leftStr + vowelStr + rightStr
-	}
+	stenoKeys := stroke.JoinKeys(keys)
+	return stroke.ParseSteno(stenoKeys), nil
 }

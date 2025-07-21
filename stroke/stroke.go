@@ -158,3 +158,31 @@ func gatherBits(runes []rune, i int, zone int) Stroke {
 func (s Stroke) String() string {
 	return s.Steno()
 }
+
+// JoinKeys expects keys in steno hyphen format, e.g. "#- "S-", "R-", "A", "*", "U", "-R", "-S"
+func JoinKeys(keys []string) string {
+	var left, vowels, right []string
+	for _, k := range keys {
+		isLeft := len(k) > 1 && k[len(k)-1] == '-'
+		isRight := len(k) > 1 && k[0] == '-'
+		isVowel := len(k) == 1
+		switch {
+		case isLeft:
+			left = append(left, strings.TrimSuffix(k, "-"))
+		case isVowel:
+			vowels = append(vowels, k)
+		case isRight:
+			right = append(right, strings.TrimPrefix(k, "-"))
+		}
+	}
+
+	leftStr := strings.Join(left, "")
+	vowelStr := strings.Join(vowels, "")
+	rightStr := strings.Join(right, "")
+
+	// Insert hyphen if there are right keys but no vowels
+	if vowelStr == "" && rightStr != "" {
+		vowelStr = "-"
+	}
+	return leftStr + vowelStr + rightStr
+}

@@ -22,18 +22,18 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	engine := engine.NewEngine()
+	e := engine.NewEngine()
 
-	machine := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud)
+	m := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud)
 
-	go engine.Run(machine)
+	go e.Run(m)
 
 	// Start machine capture
-	err = machine.StartCapture()
+	err = m.StartCapture()
 	if err != nil {
 		log.Fatalf("Failed to start Gemini PR machine: %v", err)
 	}
-	defer machine.StopCapture()
+	defer m.StopCapture()
 
 	fmt.Println("[sten] Running. Press Ctrl+C to quit.")
 

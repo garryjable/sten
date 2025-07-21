@@ -6,19 +6,9 @@ package stroke
 
 import (
 	"testing"
-
-	"sten/config"
 )
 
 func TestStrokeTranslation(t *testing.T) {
-	config.Layout = map[string]string{
-		"S1-": "S",
-		"T-":  "T",
-		"K-":  "K",
-		"-E":  "E",
-		"-S":  "S",
-	}
-
 	s := ParseSteno("STKES")
 	got := s.Steno()
 	want := "STKES"

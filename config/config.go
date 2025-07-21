@@ -8,15 +8,29 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sten/machine"
 )
-
-var Layout map[string]string
 
 type Config struct {
 	Port        string            `json:"serial_port"`
 	Baud        int               `json:"baud_rate"`
 	ReadTimeout int               `json:"timeout"`
-	Layout      map[string]string `json:"layout"`
+	Machine     string            `json:"machine"`
+	CustomKeys  map[string]string `json:"custom_keys"`
+}
+
+func (cfg *Config) setCustomKeys() map[string]string {
+	switch cfg.Machine {
+	case "geminipr":
+		for k, v := range cfg.CustomKeys {
+			machine.GeminiDefaults[k] = v
+		}
+		return machine.GeminiDefaults
+	// case "other":
+	//     return SomeOtherLayout
+	default:
+		panic("Unknown machine type: " + cfg.Machine)
+	}
 }
 
 func Load(path string) (*Config, error) {
@@ -30,6 +44,6 @@ func Load(path string) (*Config, error) {
 	if err := json.NewDecoder(f).Decode(&cfg); err != nil {
 		return nil, fmt.Errorf("could not decode config: %w", err)
 	}
-	Layout = cfg.Layout
+	cfg.setCustomKeys()
 	return &cfg, nil
 }
