@@ -13,7 +13,6 @@ import (
 
 	"sten/config"
 	"sten/engine"
-	"sten/machine"
 )
 
 func main() {
@@ -22,18 +21,9 @@ func main() {
 		log.Fatalf("Failed to load config: %v", err)
 	}
 
-	e := engine.NewEngine()
+	e := engine.NewEngine(cfg)
 
-	m := machine.NewGeminiPrMachine(cfg.Port, cfg.Baud)
-
-	go e.Run(m)
-
-	// Start machine capture
-	err = m.StartCapture()
-	if err != nil {
-		log.Fatalf("Failed to start Gemini PR machine: %v", err)
-	}
-	defer m.StopCapture()
+	go e.Run()
 
 	fmt.Println("[sten] Running. Press Ctrl+C to quit.")
 

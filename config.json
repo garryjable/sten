@@ -3,6 +3,7 @@
     "baud_rate": 9600,
     "time_out": 100,
 	"machine": "geminipr",
+	"dev": true,
     "custom_keys": {
         "S1-": "#-"
     }

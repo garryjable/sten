@@ -10,10 +10,6 @@ import (
 
 type Outline []Stroke
 
-func (o Outline) Prepend(s Stroke) Outline {
-	return append([]Stroke{s}, o...)
-}
-
 func (o Outline) Steno() string {
 	if len(o) == 0 {
 		return ""

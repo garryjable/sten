@@ -9,35 +9,26 @@ import (
 )
 
 type DevOutputService struct {
-	cmds chan OutputCommand
+	output chan Output
 }
 
-func NewDevOutputService() *DevOutputService {
+func NewDevOutputService(output chan Output) *DevOutputService {
 	s := &DevOutputService{
-		cmds: make(chan OutputCommand, 32), // Buffered channel for performance
+		output: output, // Buffered channel for performance
 	}
-	go s.loop()
 	return s
 
 }
 
-func (out *DevOutputService) loop() {
-	for cmd := range out.cmds {
-		switch cmd.Type {
-		case TypeCommand:
-			robotgo.TypeStr(cmd.Text + " ")
-		case UndoCommand:
-			for range []rune(cmd.Text + " ") {
+func (s *DevOutputService) Run() {
+	for out := range s.output {
+		switch out.Type {
+		case Writing:
+			robotgo.TypeStr(out.Text)
+		case Undoing:
+			for range []rune(out.Text) {
 				robotgo.KeyTap("backspace")
 			}
 		}
 	}
-}
-
-func (s *DevOutputService) Type(text string) {
-	s.cmds <- OutputCommand{Type: TypeCommand, Text: text}
-}
-
-func (s *DevOutputService) Undo(text string) {
-	s.cmds <- OutputCommand{Type: UndoCommand, Text: text}
 }

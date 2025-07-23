@@ -6,6 +6,7 @@ package translator
 
 import (
 	"fmt"
+	"sten/output"
 	"sten/stroke"
 	"testing"
 )
@@ -20,108 +21,161 @@ func (m *MockDictionary) Lookup(outline fmt.Stringer) (string, bool) {
 	return val, ok
 }
 
-func TestSingleWordTranslation(t *testing.T) {
-	dict := &MockDictionary{entries: map[string]string{
-		"STPH": "hello",
-	}}
-	tr := NewTranslator(dict, 1)
-
-	tr.Translate(stroke.ParseSteno("STPH"))
-	result := <-tr.Out()
-
-	if result.Text() != "hello" {
-		t.Errorf("Expected 'hello', got '%s'", result.Text())
-	}
-}
-
-func TestCommandTranslation(t *testing.T) {
-	dict := &MockDictionary{entries: map[string]string{
-		"*": "=undo",
-	}}
-	tr := NewTranslator(dict, 1)
-
-	tr.Translate(stroke.ParseSteno("*"))
-	result := <-tr.Out()
-
-	if !result.isCommand() {
-		t.Error("Expected command translation")
-	}
-	if result.Text() != "=undo" {
-		t.Errorf("Expected '=undo', got '%s'", result.Text())
-	}
-}
-
-func TestBlankFallback(t *testing.T) {
-	dict := &MockDictionary{entries: map[string]string{
-		"TPHOPB":               "known",
-		"TPHOPB/TPHOPB":        "known",
-		"TPHOPB/TPHOPB/TPHOPB": "known",
-	}}
-	tr := NewTranslator(dict, 3)
-
-	unknown := "TPHO"
-	tr.Translate(stroke.ParseSteno(unknown))
-	result := <-tr.Out()
-
-	if result.Text() != unknown {
-		t.Errorf("Expected fallback to raw, got '%s'", result.Text())
-	}
-}
-
-func TestMultiStrokeTranslation(t *testing.T) {
-	dict := &MockDictionary{entries: map[string]string{
-		"U":                      "you",
-		"R":                      "are",
-		"EUPB":                   "in",
-		"TE":                     "the",
-		"EUPB/TE/HREB/TWAL":      "intellectual",
-		"EUPB/TE/HREB/TWAL/TWAL": "Not Reachable",
-	}}
-	tr := NewTranslator(dict, 4)
-
-	tr.Translate(stroke.ParseSteno("U"))
-	<-tr.Out()
-	tr.Translate(stroke.ParseSteno("R"))
-	<-tr.Out()
-	tr.Translate(stroke.ParseSteno("EUPB"))
-	<-tr.Out()
-	tr.Translate(stroke.ParseSteno("TE"))
-	<-tr.Out()
-	tr.Translate(stroke.ParseSteno("HREB"))
-	<-tr.Out()
-	tr.Translate(stroke.ParseSteno("TWAL"))
-	result := <-tr.Out()
-
-	if result.Text() != "intellectual" {
-		t.Errorf("Expected 'intellectual' from multi-stroke, got '%s'", result.Text())
+func TestTranslator(t *testing.T) {
+	type testCase struct {
+		name       string
+		dict       map[string]string
+		outlineCap int
+		strokes    []string
+		expected   []output.Output
 	}
 
-	tr.Translate(stroke.ParseSteno("TWAL"))
-	result = <-tr.Out()
-	if result.Text() != "TWAL" {
-		t.Errorf("Expected 'TWAL' from exceed max stroke length, got '%s'", result.Text())
+	cases := []testCase{
+		{
+			name: "Single",
+			dict: map[string]string{
+				"STPH":      "hello",
+				"STPH/STPH": "Beyond ouline cap",
+				"*":         "=undo",
+			},
+			strokes: []string{
+				"STPH",
+				"STPH",
+				"*",
+				"TPHOEPB", // unknown translation
+			},
+			outlineCap: 1,
+			expected: []output.Output{
+				{output.Writing, "hello "},
+				{output.Writing, "hello "},
+				{output.Undoing, "hello "},
+				{output.Writing, "TPHOEPB "},
+			},
+		},
+		{
+			name: "Multi",
+			dict: map[string]string{
+				"U":                 "you",
+				"R":                 "are",
+				"EUPB":              "in",
+				"TE":                "the",
+				"EUPB/TE/HREB/TWAL": "intellectual",
+				"HREB/TWAL":         "translations should be greedy",
+				"*":                 "=undo",
+			},
+			strokes: []string{
+				"U",
+				"R",
+				"EUPB",
+				"TE",
+				"HREB",
+				"TWAL",
+				"*",
+				"TWAL",
+			},
+			outlineCap: 4,
+			expected: []output.Output{
+				{output.Writing, "you "},
+				{output.Writing, "are "},
+				{output.Writing, "in "},
+				{output.Writing, "the "},
+				{output.Writing, "HREB "},
+				{output.Undoing, "in the HREB "},
+				{output.Writing, "intellectual "},
+				{output.Undoing, "intellectual "},
+				{output.Writing, "in the HREB "},
+				{output.Undoing, "in the HREB "},
+				{output.Writing, "intellectual "},
+			},
+		},
+		{
+			name: "DoubleMulti",
+			dict: map[string]string{
+				"STKPHEPL":           "dismember",
+				"STKPHEPL/PWER":      "dismember",
+				"STKPHEPL/PWER/-PLT": "dismemberment",
+				"*":                  "=undo",
+			},
+			strokes: []string{
+				"STKPHEPL",
+				"PWER",
+				"-PLT",
+				"*",
+				"*",
+				"*",
+			},
+			outlineCap: 3,
+			expected: []output.Output{
+				{output.Writing, "dismember "},
+				{output.Undoing, "dismember "},
+				{output.Writing, "dismember "},
+				{output.Undoing, "dismember "},
+				{output.Writing, "dismemberment "},
+				{output.Undoing, "dismemberment "},
+				{output.Writing, "dismember "}, // Should not rewrite dismember twice
+				{output.Undoing, "dismember "},
+				{output.Writing, "dismember "},
+				{output.Undoing, "dismember "},
+			},
+		},
+		{
+			name: "FavorOldMulti",
+			dict: map[string]string{
+				"U":                   "you",
+				"R":                   "are",
+				"EUPB":                "in",
+				"TE":                  "the",
+				"U/R/EUPB/TE":         "you're into",
+				"EUPB/TE/HREB/TWAL":   "translations can't replace multi with older starting stroke",
+				"EUPB/TE/HREB/TWAL/E": "translations can't replace multi with older starting stroke",
+			},
+			strokes: []string{
+				"U",
+				"R",
+				"EUPB",
+				"TE",
+				"HREB",
+				"TWAL",
+				"E",
+			},
+			outlineCap: 5,
+			expected: []output.Output{
+				{output.Writing, "you "},
+				{output.Writing, "are "},
+				{output.Writing, "in "},
+				{output.Undoing, "you are in "},
+				{output.Writing, "you're into "},
+				{output.Writing, "HREB "},
+				{output.Writing, "TWAL "},
+				{output.Writing, "E "},
+			},
+		},
 	}
-}
 
-func TestCommandDoesNotUpdateLatest(t *testing.T) {
-	dict := &MockDictionary{entries: map[string]string{
-		"WOPB": "1",
-		"*":    "=undo",
-		"TWO":  "2",
-	}}
-	tr := NewTranslator(dict, 1)
-
-	tr.Translate(stroke.ParseSteno("WOPB"))
-	<-tr.Out()
-	tr.Translate(stroke.ParseSteno("*")) // should not change latest
-	<-tr.Out()
-	tr.Translate(stroke.ParseSteno("TWO"))
-	result := <-tr.Out()
-
-	if result.Text() != "2" {
-		t.Errorf("Expected '2', got '%s'", result.Text())
-	}
-	if result.prev == nil || result.prev.Text() != "1" {
-		t.Errorf("Expected previous translation to be '1', got '%v'", result.prev.Text())
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			in := make(chan stroke.Stroke, len(tc.strokes))
+			tr := NewTranslator(&MockDictionary{tc.dict}, tc.outlineCap, in)
+			go tr.Run()
+			for _, steno := range tc.strokes {
+				in <- stroke.ParseSteno(steno)
+			}
+			close(in)
+			i := 0
+			fmt.Println("testing output")
+			for out := range tr.Out() {
+				fmt.Println(out)
+				if i >= len(tc.expected) {
+					t.Fatalf("got more outputs than expected: %+v", out)
+				}
+				if out != tc.expected[i] {
+					t.Errorf("at %d: expected %+v, got %+v", i, tc.expected[i], out)
+				}
+				i++
+			}
+			if i != len(tc.expected) {
+				t.Fatalf("expected %d outputs, got %d", len(tc.expected), i)
+			}
+		})
 	}
 }

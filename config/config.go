@@ -17,6 +17,7 @@ type Config struct {
 	ReadTimeout int               `json:"timeout"`
 	Machine     string            `json:"machine"`
 	CustomKeys  map[string]string `json:"custom_keys"`
+	Dev         bool              `json:"dev"`
 }
 
 func (cfg *Config) setCustomKeys() map[string]string {

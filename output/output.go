@@ -4,19 +4,35 @@
 
 package output
 
-type Output interface {
-	Type(text string)
-	Undo(text string)
+type OutputService interface {
+	Run()
 }
 
-type CommandType int
+type OutputType int
 
 const (
-	TypeCommand CommandType = iota
-	UndoCommand
+	Writing OutputType = iota
+	Undoing
 )
 
-type OutputCommand struct {
-	Type CommandType
+type Output struct {
+	Type OutputType
 	Text string
+}
+
+func (t OutputType) String() string {
+	if t == Writing {
+		return "Write"
+	} else if t == Undoing {
+		return "Undo"
+	}
+	return "Unknown"
+}
+
+func NewWrite(text string) Output {
+	return Output{Type: Writing, Text: text}
+}
+
+func NewUndo(text string) Output {
+	return Output{Type: Undoing, Text: text}
 }

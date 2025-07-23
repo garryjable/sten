@@ -6,6 +6,7 @@ package engine
 
 import (
 	"log"
+	"sten/config"
 	"sten/dictionary"
 	"sten/machine"
 	"sten/output"
@@ -13,53 +14,46 @@ import (
 )
 
 type Engine struct {
-	output     output.Output
+	cfg        *config.Config
+	machine    machine.Machine
 	translator *translator.Translator
+	output     output.OutputService
 }
 
-func NewEngine() *Engine {
+func NewEngine(cfg *config.Config) *Engine {
 	// Load your dictionary
 	dict, longestOutline, err := dictionary.LoadDictionaries("dictionaries")
 	if err != nil {
 		log.Fatalf("Error loading dictionary: %v", err)
 	}
 
-	// Create virtual Output
-	output := output.NewDevOutputService()
-	translator := translator.NewTranslator(dict, longestOutline)
+	var o output.OutputService
+	var m machine.Machine
+	if cfg.Machine == "geminipr" {
+		m = machine.NewGeminiPrMachine(cfg.Port, cfg.Baud)
+	} else {
+		log.Fatalf("Unknown machine type: %v", cfg.Machine)
+	}
+	t := translator.NewTranslator(dict, longestOutline, m.Strokes())
+	if cfg.Dev == true {
+		o = output.NewDevOutputService(t.Out())
+	} else {
+		log.Fatalf("Non-dev mode output not implemented!")
+	}
 
 	e := &Engine{
-		output:     output,
-		translator: translator,
+		cfg:        cfg,
+		machine:    m,
+		output:     o,
+		translator: t,
 	}
 	return e
 }
 
-func (e *Engine) Run(machine machine.Machine) {
-	// Start a goroutine to feed strokes into translator
-	go func() {
-		for stroke := range machine.Strokes() {
-			e.translator.Translate(stroke)
-		}
-		e.translator.Close() // Close when machine input is done
-	}()
-
-	// Main loop: read translation outputs and handle them
-	for translation := range e.translator.Out() {
-		e.Execute(translation)
-	}
-}
-
-func (e *Engine) Execute(newTranslation *translator.Translation) {
-	// Get all translations being replaced
-	// replaced := getReplacedTranslations(newTranslation)
-	// Sum the output length
-	// backspaces := getBackspaceCount(replaced)
-	// if backspaces > 0 {
-	// 	e.output.Backspace(backspaces)
-	// }
-	// Output the new translation's text
-	outText := newTranslation.Text()
-	e.output.Type(outText)
-	// Optionally update engine's history or pointer if needed
+func (e *Engine) Run() {
+	// Start machine capture
+	go e.machine.StartCapture()
+	go e.translator.Run()
+	go e.output.Run()
+	defer e.machine.StopCapture()
 }

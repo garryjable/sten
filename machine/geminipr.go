@@ -173,7 +173,7 @@ func (p StrokePacket) isValid() bool {
 	return true
 }
 
-func (m *GeminiPrMachine) Strokes() <-chan stroke.Stroke {
+func (m *GeminiPrMachine) Strokes() chan stroke.Stroke {
 	return m.strokeChan
 }
 
