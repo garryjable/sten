@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"os"
 	"sten/stroke"
 	"time"
 
@@ -147,7 +146,7 @@ func (m *GeminiPrMachine) readLoop() {
 		_, err := m.port.Read(packet[:])
 		if err != nil {
 			// Only print unexpected errors
-			if errors.Is(err, os.ErrDeadlineExceeded) || err == io.EOF {
+			if err == io.EOF {
 				continue
 			}
 			log.Printf("serial read error: %v", err)
