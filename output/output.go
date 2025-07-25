@@ -8,31 +8,14 @@ type OutputService interface {
 	Run()
 }
 
-type OutputType int
-
-const (
-	Writing OutputType = iota
-	Undoing
-)
-
 type Output struct {
-	Type OutputType
-	Text string
+	Write string
+	Undo  string
 }
 
-func (t OutputType) String() string {
-	if t == Writing {
-		return "Write"
-	} else if t == Undoing {
-		return "Undo"
+func NewOutput(write, undo string) Output {
+	return Output{
+		Write: write,
+		Undo:  undo,
 	}
-	return "Unknown"
-}
-
-func NewWrite(text string) Output {
-	return Output{Type: Writing, Text: text}
-}
-
-func NewUndo(text string) Output {
-	return Output{Type: Undoing, Text: text}
 }

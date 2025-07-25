@@ -14,7 +14,7 @@ type DevOutputService struct {
 
 func NewDevOutputService(output chan Output) *DevOutputService {
 	s := &DevOutputService{
-		output: output, // Buffered channel for performance
+		output: output,
 	}
 	return s
 
@@ -22,13 +22,9 @@ func NewDevOutputService(output chan Output) *DevOutputService {
 
 func (s *DevOutputService) Run() {
 	for out := range s.output {
-		switch out.Type {
-		case Writing:
-			robotgo.TypeStr(out.Text)
-		case Undoing:
-			for range []rune(out.Text) {
-				robotgo.KeyTap("backspace")
-			}
+		for range []rune(out.Undo) {
+			robotgo.KeyTap("backspace")
 		}
+		robotgo.TypeStr(out.Write)
 	}
 }
