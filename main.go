@@ -29,7 +29,8 @@ func main() {
 
 	// Handle Ctrl+C
 	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
 	fmt.Println("\n[sten] Quit with Ctrl+C")
+	e.Stop()
 }

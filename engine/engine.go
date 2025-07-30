@@ -18,6 +18,7 @@ type Engine struct {
 	machine    machine.Machine
 	translator *translator.Translator
 	output     output.OutputService
+	stop       chan struct{}
 }
 
 func NewEngine(cfg *config.Config) *Engine {
@@ -35,7 +36,7 @@ func NewEngine(cfg *config.Config) *Engine {
 		log.Fatalf("Unknown machine type: %v", cfg.Machine)
 	}
 	t := translator.NewTranslator(dict, longestOutline, m.Strokes())
-	if cfg.Dev == true {
+	if cfg.Dev {
 		o = output.NewDevOutputService(t.Out())
 	} else {
 		log.Fatalf("Non-dev mode output not implemented!")
@@ -46,6 +47,7 @@ func NewEngine(cfg *config.Config) *Engine {
 		machine:    m,
 		output:     o,
 		translator: t,
+		stop:       make(chan struct{}),
 	}
 	return e
 }
@@ -55,5 +57,10 @@ func (e *Engine) Run() {
 	go e.machine.StartCapture()
 	go e.translator.Run()
 	go e.output.Run()
-	defer e.machine.StopCapture()
+	<-e.stop
+}
+
+func (e *Engine) Stop() {
+	e.machine.StopCapture()
+	close(e.stop) // unblocks Run()}
 }

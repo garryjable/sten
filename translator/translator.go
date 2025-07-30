@@ -5,7 +5,6 @@
 package translator
 
 import (
-	"fmt"
 	"sten/dictionary"
 	"sten/output"
 	"sten/stroke"
@@ -30,7 +29,6 @@ func (r *Result) write() output.Output {
 }
 
 func (tr *Translator) newTranslation(raw, replaced string, outline stroke.Outline, prev *Translation) *Translation {
-	fmt.Printf("translated %v \n", raw)
 	if raw == "=undo" {
 		return newUndo(raw, outline, prev)
 	} else if strings.HasPrefix(raw, "{^}") {
@@ -125,7 +123,6 @@ func NewTranslator(dict dictionary.Dict, outlineCap int, in chan stroke.Stroke) 
 
 // provides the longest possible match
 func (tr *Translator) translate(outline stroke.Outline, prev *Translation, replacing string) *Translation {
-	fmt.Printf("outline %v, replacing %s \n", outline, replacing)
 
 	if len(outline) > tr.outlineCap {
 		return nil // too deep to match
