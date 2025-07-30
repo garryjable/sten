@@ -5,6 +5,7 @@
 package translator
 
 import (
+	"fmt"
 	"sten/dictionary"
 	"sten/output"
 	"sten/stroke"
@@ -15,13 +16,31 @@ type Translation struct {
 	result   Result
 	outline  stroke.Outline
 	prev     *Translation // previous
-	replaced *Translation // previous stroke in multi
+	replaced *Translation // store replaced translations
 }
 
 type Result struct {
 	raw      string
 	text     string
-	replaced string // multi
+	replaced string // cache of replaced result
+}
+
+func (r *Result) write() output.Output {
+	return output.NewOutput(r.text, r.replaced)
+}
+
+func (tr *Translator) newTranslation(raw, replaced string, outline stroke.Outline, prev *Translation) *Translation {
+	fmt.Printf("translated %v \n", raw)
+	if raw == "=undo" {
+		return newUndo(raw, outline, prev)
+	} else if strings.HasPrefix(raw, "{^}") {
+		suffix := raw[3:]
+		return newSuffix(raw, suffix, outline, prev)
+	} else if len(outline) == 1 {
+		return newSingleStroke(raw, outline, prev)
+	} else {
+		return newMultiStroke(raw, replaced, outline, prev, tr.latest)
+	}
 }
 
 // Translator is the main engine for converting strokes to translations.
@@ -33,46 +52,56 @@ type Translator struct {
 	out        chan output.Output
 }
 
-func newResult(raw, replaced string) Result {
-	return Result{
-		raw:      raw,
-		text:     raw + " ",
-		replaced: replaced,
+func newSingleStroke(raw string, outline stroke.Outline, prev *Translation) *Translation {
+	return &Translation{
+		result:   Result{raw, raw + " ", ""},
+		outline:  outline,
+		prev:     prev,
+		replaced: nil,
 	}
 }
 
-func newCommand(result Result, outline stroke.Outline) *Translation {
+func newMultiStroke(raw, replaced string, outline stroke.Outline, prev, replacedPtr *Translation) *Translation {
 	return &Translation{
-		result:   result,
+		result:   Result{raw, raw + " ", replaced},
+		outline:  outline,
+		prev:     prev,
+		replaced: replacedPtr,
+	}
+}
+
+func newSuffix(raw, suffix string, outline stroke.Outline, prev *Translation) *Translation {
+	return &Translation{
+		result:   Result{raw, suffix + " ", " "},
+		outline:  outline,
+		prev:     prev,
+		replaced: nil,
+	}
+}
+
+func newUntranslatable(outline stroke.Outline, prev *Translation) *Translation {
+	return &Translation{
+		result:   Result{outline.String(), outline.String() + " ", ""},
+		outline:  outline,
+		prev:     prev,
+		replaced: nil,
+	}
+}
+
+func newUndo(raw string, outline stroke.Outline, prev *Translation) *Translation {
+	return &Translation{
+		result:   Result{raw, prev.result.replaced, prev.result.text},
 		outline:  outline,
 		prev:     nil,
 		replaced: nil,
 	}
 }
 
-func newSingleStroke(result Result, outline stroke.Outline, prev *Translation) *Translation {
+func newBlank() *Translation {
 	return &Translation{
-		result:   result,
-		outline:  outline,
-		prev:     prev,
-		replaced: nil,
-	}
-}
-
-func newMultiStroke(result Result, outline stroke.Outline, prev, replaced *Translation) *Translation {
-	return &Translation{
-		result:   result,
-		outline:  outline,
-		prev:     prev,
-		replaced: replaced,
-	}
-}
-
-func newUntranslatable(outline stroke.Outline, prev *Translation) *Translation {
-	return &Translation{
-		result:   newResult(outline.String(), ""),
-		outline:  outline,
-		prev:     prev,
+		result:   Result{"", "", ""},
+		outline:  stroke.Outline{},
+		prev:     nil,
 		replaced: nil,
 	}
 }
@@ -82,7 +111,7 @@ func NewTranslator(dict dictionary.Dict, outlineCap int, in chan stroke.Stroke) 
 	t := &Translator{
 		dict: dict,
 		latest: &Translation{
-			result:   newResult("", ""),
+			result:   Result{"", "", ""},
 			outline:  stroke.Outline{},
 			prev:     nil,
 			replaced: nil,
@@ -96,26 +125,21 @@ func NewTranslator(dict dictionary.Dict, outlineCap int, in chan stroke.Stroke) 
 
 // provides the longest possible match
 func (tr *Translator) translate(outline stroke.Outline, prev *Translation, replacing string) *Translation {
+	fmt.Printf("outline %v, replacing %s \n", outline, replacing)
+
 	if len(outline) > tr.outlineCap {
 		return nil // too deep to match
 	}
 
 	if prev.prev != nil {
-		latest := tr.translate(append(prev.outline, outline...), prev.prev, prev.result.text+replacing)
-		if latest != nil {
-			return latest // return the longest possible match
+		translation := tr.translate(append(prev.outline, outline...), prev.prev, prev.result.text+replacing)
+		if translation != nil {
+			return translation // return the longest possible translation
 		}
 	}
 
-	if text, ok := tr.dict.Lookup(outline); ok {
-		result := newResult(text, replacing)
-		if strings.HasPrefix(text, "=") {
-			return newCommand(result, outline)
-		} else if len(outline) == 1 {
-			return newSingleStroke(result, outline, prev)
-		} else {
-			return newMultiStroke(result, outline, prev, tr.latest)
-		}
+	if entry, ok := tr.dict.Lookup(outline); ok {
+		return tr.newTranslation(entry, replacing, outline, prev)
 	}
 
 	if len(outline) == 1 {
@@ -125,53 +149,31 @@ func (tr *Translator) translate(outline stroke.Outline, prev *Translation, repla
 	return nil // unreachable
 }
 
-// pops most recent translation returns result()
-func (t *Translator) undo() output.Output {
-	if t.latest.prev == nil {
-		return output.NewOutput("", "") // noop
-	}
-
-	write := t.latest.result.replaced
-	undo := t.latest.result.text
-
-	if t.latest.replaced != nil {
-		t.latest = t.latest.replaced
+func (tr *Translator) updateHistory(latest *Translation) {
+	if latest.result.raw == "=undo" {
+		tr.undo()
 	} else {
-		t.latest = t.latest.prev
-	}
-
-	return output.NewOutput(write, undo)
-}
-
-func (t *Translation) isCommand() bool {
-	if strings.HasPrefix(t.result.raw, "=") {
-		return true
-	} else {
-		return false
-	}
-}
-
-func (tr *Translator) appendHistory(latest *Translation) {
-	if !latest.isCommand() {
 		tr.latest = latest
 	}
 }
 
-func (t *Translator) Out() chan output.Output {
-	return t.out
+func (tr *Translator) undo() {
+	if tr.latest.replaced != nil {
+		tr.latest = tr.latest.replaced
+	} else if tr.latest.prev != nil {
+		tr.latest = tr.latest.prev
+	}
 }
 
-func (t *Translator) Run() {
-	for stroke := range t.in {
-		latest := t.translate(stroke.Outline(), t.latest, "")
-		t.appendHistory(latest)
-		if latest.isCommand() {
-			if latest.result.raw == "=undo" {
-				t.out <- t.undo()
-			}
-		} else {
-			t.out <- output.NewOutput(latest.result.text, latest.result.replaced)
-		}
+func (tr *Translator) Out() chan output.Output {
+	return tr.out
+}
+
+func (tr *Translator) Run() {
+	for stroke := range tr.in {
+		latest := tr.translate(stroke.Outline(), tr.latest, "")
+		tr.updateHistory(latest)
+		tr.out <- latest.result.write()
 	}
-	close(t.out)
+	close(tr.out)
 }

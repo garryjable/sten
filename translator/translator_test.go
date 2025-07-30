@@ -86,7 +86,7 @@ func TestTranslator(t *testing.T) {
 			},
 		},
 		{
-			name: "DoubleMulti",
+			name: "Recursive Outlines",
 			dict: map[string]string{
 				"STKPHEPL":           "dismember",
 				"STKPHEPL/PWER":      "dismember",
@@ -112,7 +112,7 @@ func TestTranslator(t *testing.T) {
 			},
 		},
 		{
-			name: "FavorOldMulti",
+			name: "Prefer Old Multi",
 			dict: map[string]string{
 				"U":                   "you",
 				"R":                   "are",
@@ -140,6 +140,32 @@ func TestTranslator(t *testing.T) {
 				{"HREB ", ""},
 				{"TWAL ", ""},
 				{"E ", ""},
+			},
+		},
+		{
+			name: "Suffixes",
+			dict: map[string]string{
+				"KOPL":         "come",
+				"KOPL/PHRAOET": "complete",
+				"#P*EU":        "{^}.py",
+				"*":            "=undo",
+			},
+			strokes: []string{
+				"KOPL",
+				"PHRAOET",
+				"#P*EU",
+				"*",
+				"*",
+				"*",
+			},
+			outlineCap: 2,
+			expected: []output.Output{
+				{"come ", ""},
+				{"complete ", "come "},
+				{".py ", " "},
+				{" ", ".py "},
+				{"come ", "complete "},
+				{"", "come "},
 			},
 		},
 	}
