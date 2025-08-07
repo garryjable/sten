@@ -31,6 +31,8 @@ func (r *Result) write() output.Output {
 func (tr *Translator) newTranslation(raw, replaced string, outline stroke.Outline, prev *Translation) *Translation {
 	if raw == "=undo" {
 		return newUndo(raw, outline, prev)
+		//	} else if raw == "=repeat_last_translation" {
+		//		return Translation{tr.latest.result, tr.latest.outline, }
 	} else if strings.HasPrefix(raw, "{^}") {
 		suffix := raw[3:]
 		return newSuffix(raw, suffix, outline, prev)
